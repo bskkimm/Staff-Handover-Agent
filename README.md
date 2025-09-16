@@ -1,4 +1,4 @@
-# Handover Agent — MVP
+# Handover Agent 
 
 An **LLM-based staff handover agent** prototype with three main functions:
 
