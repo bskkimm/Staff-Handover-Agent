@@ -12,8 +12,13 @@ st.markdown("""
 /* 본문 폭 */
 .main .block-container { max-width: 1100px; padding-top:.8rem; }
 
-/* ---------- Sidebar: 전체 흰색 & 그림자 제거 ---------- */
-[data-testid="stSidebar"],
+/* ---------- Sidebar ---------- */
+[data-testid="stSidebar"]{
+  background:#ffffff !important;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.03) !important;
+  border:none !important;
+}
+
 [data-testid="stSidebar"] > div,
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"],
 [data-testid="stSidebar"] .streamlit-option-menu,
@@ -73,7 +78,7 @@ st.markdown("""
 }
 
 /* Header & badges */
-.baton-header { font-weight:800; font-size:28px; letter-spacing:.5px; color:#111827; margin:8px 0 6px 2px; }
+.baton-header { font-weight:800; font-size:48px; letter-spacing:.5px; color:#111827; margin:8px 0 6px 2px; }
 .baton-sub { color:#6b7280; margin:0 0 16px 2px; font-size:14px; }
 .status-pill { display:inline-block; padding:6px 12px; border-radius:16px; background:#3b82f6; color:#fff;
                font-size:12px; font-weight:600; border:none; box-shadow:0 2px 4px rgba(59,130,246,.2); }
@@ -171,7 +176,7 @@ if st.session_state.nav != "메인":
     st.markdown('<div class="baton-header">BATON</div>', unsafe_allow_html=True)
     if is_uploaded:
         file_count = get_uploaded_files_count()
-        st.markdown(f'<span class="status-pill">📁 업로드 {file_count}개</span>', unsafe_allow_html=True)
+        st.markdown(f'<span class="status-pill">📁 업로드 문서 개수 : {file_count}개</span>', unsafe_allow_html=True)
     else:
         st.markdown('<span class="baton-sub">인수인계 자료를 업로드하고 기능을 시작하세요.</span>', unsafe_allow_html=True)
 
