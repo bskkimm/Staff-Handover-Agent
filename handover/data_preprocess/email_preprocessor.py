@@ -17,7 +17,7 @@ class SimpleEmailPreprocessor:
     
     def preprocess_email(self, email_content: str) -> str:
         """이메일을 간단한 텍스트 형태로 전처리"""
-        
+            
         # 1. 이메일 체인을 개별 이메일로 분리
         email_parts = re.split(r'-----Original Message-----', email_content)
         
