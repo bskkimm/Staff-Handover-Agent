@@ -124,7 +124,7 @@ def render_file_list():
                 )
             
             with col2:
-                # 개별 파일 삭제 버튼 (최소 너비)
+                # 개별 파일 삭제 버튼
                 if st.button(":material/delete:", key=f"delete_{file_record.id}", type="secondary", help="파일 삭제"):
                     try:
                         if file_db.delete_file(file_record.id):

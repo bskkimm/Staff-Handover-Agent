@@ -4,7 +4,7 @@ import os
 import streamlit as st
 from streamlit_option_menu import option_menu
 
-st.set_page_config(page_title="BATON", page_icon="🪄", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="BATON", page_icon="🏃‍♂️", layout="centered", initial_sidebar_state="collapsed")
 
 # ================== Global Styles ==================
 st.markdown("""
@@ -15,7 +15,7 @@ st.markdown("""
 /* ---------- Sidebar ---------- */
 [data-testid="stSidebar"]{
   background:#ffffff !important;
-  box-shadow: 2px 0 8px rgba(0,0,0,0.03) !important;
+  box-shadow: 2px 0 8px rgba(128,128,128,0.05) !important;
   border:none !important;
 }
 
@@ -53,7 +53,7 @@ st.markdown("""
 /* option_menu 기본 아이콘 색 */
 .streamlit-option-menu .icon { color:#6b7280 !important; font-size:18px !important; }
 
-/* 항목 사이 구분 바 (마지막은 제거) */
+/* 항목 사이 구분 바*/
 .streamlit-option-menu .nav-item:not(:last-child) .nav-link{
   border-bottom:1px solid #e5e7eb !important;
   border-radius:8px !important;
@@ -70,11 +70,6 @@ st.markdown("""
 }
 .streamlit-option-menu .nav-link.active .icon{
   color:#ef4444 !important;
-}
-
-/* hover 효과 */
-.streamlit-option-menu .nav-link:hover{
-  background:#f8fafc !important;
 }
 
 /* Header & badges */
@@ -103,12 +98,6 @@ st.markdown("""
 # ================== Session ==================
 if "nav" not in st.session_state:
     st.session_state.nav = "메인"
-
-def human_size(b):
-    for unit in ["B","KB","MB","GB","TB"]:
-        if b < 1024.0: return f"{b:3.1f}{unit}"
-        b /= 1024.0
-    return f"{b:.1f}PB"
 
 # ================== File Upload Status Check ==================
 def check_uploaded_files():
