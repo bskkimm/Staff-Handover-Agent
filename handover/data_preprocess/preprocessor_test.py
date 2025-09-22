@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from typing import List, Dict, Optional
 from pathlib import Path
 from datetime import datetime
@@ -910,8 +911,22 @@ def process_all_files(files_dict):
             result['personal_notes'].append(parsed)
     
     return result
+def convert_to_json(data: dict, output_file: str = None) -> str:
+    def custom_serializer(obj):
+        # Email 객체처럼 dict로 변환 가능한 것은 __dict__ 사용
+        if hasattr(obj, "__dict__"):
+            return obj.__dict__
+        # datetime → ISO 포맷 문자열
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        # 그 외는 문자열로
+        return str(obj)
+    json_str = json.dumps(data, ensure_ascii=False, indent=2, default=custom_serializer)
+
+    return json_str
 
 if __name__ == "__main__":
     files = read_multiple_txt_files("C:/Users/Administrator/SK_AX_Bootcamp/Staff-Handover-Agent/data/compensation/Test", "*.txt")
     processed_files = process_all_files(files)
-    print(processed_files)
+    json_output = convert_to_json(processed_files)
+    print(json_output)
