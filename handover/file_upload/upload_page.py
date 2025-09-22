@@ -12,7 +12,6 @@ def human_size(bytes_size: int) -> str:
 
 def run_upload():
     """파일 업로드 페이지 실행"""
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("#### 파일 업로드")
     st.caption("지원 형식: PDF, TXT, DOCX, CSV — 여러 파일을 한 번에 올릴 수 있어요.")
 
@@ -27,13 +26,23 @@ def run_upload():
     # 버튼들
     col1, col2 = st.columns([1, 1])
     
+    # 파일 선택 여부 확인을 위한 변수
+    upload_clicked = False
+    
     with col1:
         if st.button("업로드 추가", use_container_width=True, type="primary"):
-            handle_upload(files)
+            upload_clicked = True
     
     with col2:
         if st.button("전체 삭제", use_container_width=True):
             handle_delete_all()
+    
+    # 업로드 처리 및 메시지 표시 (컬럼 밖에서)
+    if upload_clicked:
+        if files:
+            handle_upload(files)
+        else:
+            st.warning("추가할 파일을 먼저 선택해 주세요.")
 
     st.divider()
     render_file_list()
@@ -41,10 +50,6 @@ def run_upload():
 
 def handle_upload(files):
     """파일 업로드 처리"""
-    if not files:
-        st.warning("추가할 파일을 먼저 선택해 주세요.")
-        return
-    
     added = 0
     duplicates = 0
     errors = []
@@ -107,7 +112,7 @@ def render_file_list():
         
         # 파일 목록을 테이블 형태로 표시
         for file_record in files:
-            col1, col2 = st.columns([4, 1])
+            col1, col2 = st.columns([9, 1])
             
             with col1:
                 # 파일 정보 표시
@@ -117,15 +122,10 @@ def render_file_list():
                     f"{human_size(file_record.file_size)} - "
                     f"{file_record.upload_time.strftime('%Y-%m-%d %H:%M:%S')}"
                 )
-                # 저장 경로 표시 (개발 참고용)
-                with st.expander("상세 정보"):
-                    st.code(f"저장 파일명: {file_record.filename}")
-                    st.code(f"저장 경로: {file_record.file_path}")
-                    st.code(f"파일 해시: {file_record.file_hash}")
             
             with col2:
                 # 개별 파일 삭제 버튼
-                if st.button("삭제", key=f"delete_{file_record.id}", type="secondary"):
+                if st.button(":material/delete:", key=f"delete_{file_record.id}", type="secondary", help="파일 삭제"):
                     try:
                         if file_db.delete_file(file_record.id):
                             st.success(f"'{file_record.original_name}' 파일을 삭제했어요.")
@@ -137,23 +137,6 @@ def render_file_list():
         
         # 다른 기능 활성화 안내
         st.info("왼쪽 메뉴의 기능들이 활성화되었습니다. 원하는 기능으로 이동하세요. ✅")
-        
-        # 전처리팀을 위한 정보
-        st.markdown("---")
-        with st.expander("💡 전처리팀 참고사항"):
-            st.markdown("""
-            **DB 접근 방법:**
-            ```python
-            import sqlite3
-            conn = sqlite3.connect('./data/file_metadata.db')
-            files = conn.execute("SELECT * FROM uploaded_files").fetchall()
-            ```
-            
-            **유용한 쿼리:**
-            - PDF 파일만: `SELECT * FROM uploaded_files WHERE file_type = 'pdf'`
-            - 최근 업로드: `SELECT * FROM uploaded_files ORDER BY upload_time DESC`
-            - 큰 파일들: `SELECT * FROM uploaded_files WHERE file_size > 1000000`
-            """)
         
     except Exception as e:
         st.error(f"파일 목록을 불러오는 중 오류가 발생했습니다: {str(e)}")
