@@ -83,7 +83,7 @@ st.markdown("""
 .hint { color:#6b7280; font-size:14px; }
 
 /* 메인 랜딩 */
-.main-welcome { text-align:center; margin:80px auto; max-width:600px; }
+.main-welcome { text-align:center; margin:40px auto 60px; max-width:600px; }
 .main-title { font-size:42px; font-weight:800; color:#111827; margin-bottom:16px; line-height:1.2; }
 .main-subtitle { font-size:18px; color:#6b7280; margin-bottom:40px; line-height:1.5; }
 .feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:24px; margin-top:48px; }
@@ -119,21 +119,28 @@ def get_uploaded_files_count():
         return 0
 
 # ================== Sidebar (option_menu) ==================
-pages = ["메인", "파일 업로드", "인수인계 자료 추출", "Q&A", "스케줄 확인"]
-icons = ['house', 'cloud-upload', 'file-earmark-text', 'chat-dots', 'calendar3']
 is_uploaded = check_uploaded_files()
+
+# 파일 업로드 상태에 따라 메뉴 동적 구성
+if is_uploaded:
+    pages = ["메인", "파일 업로드", "인수인계 자료 추출", "Q&A", "스케줄 확인"]
+    icons = ['house', 'cloud-upload', 'file-earmark-text', 'chat-dots', 'calendar3']
+else:
+    pages = ["메인", "파일 업로드"]
+    icons = ['house', 'cloud-upload']
 
 with st.sidebar:
     st.markdown('<div class="sidebar-title">Menu</div>', unsafe_allow_html=True)
+
+    # 현재 선택된 페이지가 available pages에 없으면 메인으로 리셋
+    if st.session_state.nav not in pages:
+        st.session_state.nav = "메인"
 
     try:
         current_index = pages.index(st.session_state.nav)
     except ValueError:
         current_index = 0
-
-    if not is_uploaded and st.session_state.nav in ["인수인계 자료 추출", "Q&A", "스케줄 확인"]:
         st.session_state.nav = "메인"
-        current_index = 0
 
     choice = option_menu(
         None, pages, icons=icons, menu_icon=None, default_index=current_index,
@@ -146,17 +153,15 @@ with st.sidebar:
         }
     )
 
-    if not is_uploaded and choice in ["인수인계 자료 추출", "Q&A", "스케줄 확인"]:
-        choice = st.session_state.nav
-
     if choice != st.session_state.nav:
         st.session_state.nav = choice
         st.rerun()
 
+    # 파일이 업로드되지 않았을 때 안내 메시지 표시
     if not is_uploaded:
         st.markdown(
             '<div style="color:#6b7280;font-size:12px;text-align:center;margin:16px 8px 0;">'
-            '⚠ 파일을 업로드하면 모든 메뉴를 사용할 수 있습니다.'
+            '⚠ 파일을 업로드하면 추가 메뉴를 사용할 수 있습니다.'
             '</div>', unsafe_allow_html=True
         )
 
@@ -211,19 +216,12 @@ def page_upload():
         st.error(f"파일 업로드 중 오류가 발생했습니다: {e}")
 
 def page_report():
-    if not is_uploaded: 
-        st.warning("먼저 파일을 업로드하세요.")
-        return
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("#### 인수인계 자료 추출")
     st.success("업로드 확인. 인수인계 요약 로직을 이 영역에 연결하세요.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 def page_qa():
-    if not is_uploaded: 
-        st.warning("먼저 파일을 업로드하세요.")
-        return
-    
     try:
         from chatbot import run_chat
         run_chat(use_sidebar=False)
@@ -234,9 +232,6 @@ def page_qa():
         st.error(f"챗봇 실행 중 오류가 발생했습니다: {e}")
 
 def page_calendar():
-    if not is_uploaded: 
-        st.warning("먼저 파일을 업로드하세요.")
-        return
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("#### 스케줄 확인")
     st.success("업로드 확인. 스케줄 추출/캘린더 연동 로직을 이 영역에 연결하세요.")
