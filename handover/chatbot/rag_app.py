@@ -6,14 +6,8 @@ from typing import List, Tuple, Dict
 
 import numpy as np
 import faiss
-import streamlit as st
-from dotenv import load_dotenv
 from openai import AzureOpenAI
 
-# ----------------------------
-# Env + Constants
-# ----------------------------
-load_dotenv()
 
 SYSTEM_PERSONA = """
 당신은 인사팀 대리 김민수입니다. 후임자에게 업무를 인수인계하는 상황에서 질문에 답변하고 있습니다.
@@ -129,102 +123,99 @@ def _render_msg(role: str, content: str):
         unsafe_allow_html=True
     )
 
-# ----------------------------
-# Streamlit App
-# ----------------------------
-def run_chat():
-    st.set_page_config(page_title="Handover RAG (TXT)", layout="wide")
-    st.markdown("""
-    <style>
-    .qa-container { max-width: 900px; margin:auto; }
-    .msg-row { display:flex; margin:8px 0; }
-    .msg-row.user { justify-content:flex-end; }
-    .msg-row.assistant { justify-content:flex-start; }
-    .bubble { padding:12px 16px; border-radius:16px; line-height:1.6;
-              box-shadow:0 1px 3px rgba(0,0,0,0.05); word-wrap:break-word; 
-              white-space:pre-wrap; font-size:16px; }
-    .bubble.user { display:inline-block; max-width:70%; background:#dbeafe; 
-                   border:1px solid #bfdbfe; text-align:left; border-bottom-right-radius:6px; }
-    .bubble.assistant { flex:1; background:#f9fafb; border:1px solid #e5e7eb; text-align:left; }
-    .persona-info { background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; 
-                    padding:12px; margin:8px 0; font-size:14px; color:#0369a1; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Check keys early
-    if not os.getenv("AZURE_OPENAI_API_KEY"):
-        st.error("❌ AZURE_OPENAI_API_KEY가 설정되지 않았습니다. .env를 확인하세요.")
-        return
-
-    # Load FAISS + metadata once
-    try:
-        index, meta = load_rag_store(INDEX_PATH, META_PATH)
-    except FileNotFoundError as e:
-        st.error(str(e))
-        st.info("💡 먼저 임베딩 스크립트를 실행해 txt.faiss / txt.jsonl을 생성하세요.")
-        return
-
-    # Client
-    try:
-        client = get_azure_client()
-    except Exception as e:
-        st.error(f"Azure OpenAI 클라이언트 생성 실패: {e}")
-        return
-
-    # UI header
-    st.markdown('<div class="qa-container">', unsafe_allow_html=True)
-    top_col1, top_col2 = st.columns([4, 2])
-    with top_col1:
-        st.markdown("### 업무 Q&A 챗봇 (RAG)")
-        st.caption("로컬 임베딩 + FAISS 검색 기반 RAG (TXT 전용)")
-    with top_col2:
-        k = st.slider("Top-k 문맥 개수", 3, 12, 6)
-        if st.button("대화 초기화", type="secondary", use_container_width=True):
-            st.session_state.pop("qa_history", None)
-            st.rerun()
-
-    # Session state
-    if "qa_history" not in st.session_state:
-        st.session_state.qa_history = []
-
-    # Render history
-    for msg in st.session_state.qa_history:
-        _render_msg(msg["role"], msg["content"])
-
-    # Input
-    query = st.chat_input("전임자에게 질문해보세요")
-    if query:
-        st.session_state.qa_history.append({"role": "user", "content": query})
-        _render_msg("user", query)
-
-        with st.spinner("🤔 문서에서 관련 내용을 찾고 있어요..."):
-            try:
-                # 1) Embed query
-                q_vec = embed_text(client, query)
-                # 2) Retrieve
-                hits = retrieve_topk(index, meta, q_vec, k=k)
-                if not hits:
-                    response = "그 부분은 제가 가진 자료에서는 확인이 안 되네요"
-                else:
-                    # 3) Build context + prompt
-                    context = build_context(hits)
-                    user_prompt = build_user_prompt(query, context)
-                    # 4) Chat
-                    response = chat_with_context(client, SYSTEM_PERSONA, user_prompt)
-            except Exception as e:
-                response = f"오류가 발생했어요: {e}"
-
-        st.session_state.qa_history.append({"role": "assistant", "content": response})
-        _render_msg("assistant", response)
-
-        # Optional: show sources
-        if 'hits' in locals() and hits:
-            with st.expander("🔎 사용한 출처 보기"):
-                for s, m in hits:
-                    st.write(f"- {Path(m['source']).name} (chunk {m['chunk_index_in_doc']}), score={s:.3f}")
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-
-if __name__ == "__main__":
-    run_chat()
+class RAGChatbot:
+    """RAG 챗봇의 비즈니스 로직을 담당하는 클래스"""
+    
+    def __init__(self):
+        self.client = None
+        self.index = None
+        self.meta = None
+        self._initialized = False
+    
+    def initialize(self) -> Tuple[bool, str]:
+        """RAG 시스템 초기화
+        Returns:
+            (success: bool, message: str)
+        """
+        try:
+            # 환경변수 체크
+            if not os.getenv("AZURE_OPENAI_API_KEY"):
+                return False, "❌ AZURE_OPENAI_API_KEY가 설정되지 않았습니다. .env를 확인하세요."
+            
+            # Azure 클라이언트 생성
+            self.client = get_azure_client()
+            
+            # RAG 스토어 로드
+            self.index, self.meta = load_rag_store(INDEX_PATH, META_PATH)
+            
+            self._initialized = True
+            return True, "✅ RAG 시스템이 성공적으로 초기화되었습니다."
+            
+        except FileNotFoundError as e:
+            return False, f"❌ {str(e)}\n💡 먼저 임베딩 스크립트를 실행해 txt.faiss / txt.jsonl을 생성하세요."
+        except Exception as e:
+            return False, f"❌ 초기화 실패: {e}"
+    
+    def ask(self, query: str, k: int = 6) -> Dict[str, any]:
+        """질문에 대한 답변 생성
+        Args:
+            query: 사용자 질문
+            k: 검색할 문서 수
+        Returns:
+            {
+                'answer': str,
+                'sources': List[Dict],
+                'error': str or None
+            }
+        """
+        if not self._initialized:
+            return {
+                'answer': None,
+                'sources': [],
+                'error': 'RAG 시스템이 초기화되지 않았습니다.'
+            }
+        
+        try:
+            # 1) 쿼리 임베딩
+            q_vec = embed_text(self.client, query)
+            
+            # 2) 관련 문서 검색
+            hits = retrieve_topk(self.index, self.meta, q_vec, k=k)
+            
+            if not hits:
+                return {
+                    'answer': "그 부분은 제가 가진 자료에서는 확인이 안 되네요",
+                    'sources': [],
+                    'error': None
+                }
+            
+            # 3) 컨텍스트 구성 및 답변 생성
+            context = build_context(hits)
+            user_prompt = build_user_prompt(query, context)
+            answer = chat_with_context(self.client, SYSTEM_PERSONA, user_prompt)
+            
+            # 4) 소스 정보 정리
+            sources = []
+            for score, meta in hits:
+                sources.append({
+                    'filename': Path(meta['source']).name,
+                    'chunk_index': meta['chunk_index_in_doc'],
+                    'score': score
+                })
+            
+            return {
+                'answer': answer,
+                'sources': sources,
+                'error': None
+            }
+            
+        except Exception as e:
+            return {
+                'answer': None,
+                'sources': [],
+                'error': f"오류가 발생했어요: {e}"
+            }
+    
+    def is_initialized(self) -> bool:
+        """초기화 상태 확인"""
+        return self._initialized
