@@ -3,6 +3,10 @@ from datetime import datetime
 import os
 import streamlit as st
 from streamlit_option_menu import option_menu
+from dotenv import load_dotenv
+
+# 환경변수 로드
+load_dotenv()
 
 st.set_page_config(page_title="BATON", page_icon="🏃‍♂️", layout="centered", initial_sidebar_state="collapsed")
 
@@ -223,8 +227,8 @@ def page_report():
 
 def page_qa():
     try:
-        from chatbot import run_chat
-        run_chat(use_sidebar=False)
+        from chatbot.chatbot_page import run_chat
+        run_chat()  
     except ImportError as e:
         st.error(f"챗봇 모듈을 불러올 수 없습니다: {e}")
         st.info("chatbot.py 파일이 같은 폴더에 있는지 확인해주세요.")
