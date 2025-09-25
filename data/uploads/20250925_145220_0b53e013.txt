@@ -3,10 +3,6 @@ from datetime import datetime
 import os
 import streamlit as st
 from streamlit_option_menu import option_menu
-from dotenv import load_dotenv
-
-# 환경변수 로드
-load_dotenv()
 
 st.set_page_config(page_title="BATON", page_icon="🏃‍♂️", layout="centered", initial_sidebar_state="collapsed")
 
@@ -76,15 +72,21 @@ st.markdown("""
   color:#ef4444 !important;
 }
 
+/* Header & badges */
+.baton-header { font-weight:800; font-size:48px; letter-spacing:.5px; color:#111827; margin:8px 0 6px 2px; }
+.baton-sub { color:#6b7280; margin:0 0 16px 2px; font-size:14px; }
+.status-pill { display:inline-block; padding:6px 12px; border-radius:16px; background:#3b82f6; color:#fff;
+               font-size:12px; font-weight:600; border:none; box-shadow:0 2px 4px rgba(59,130,246,.2); }
+
 /* 카드/텍스트 */
 .card { border:1px solid #e5e7eb; background:#ffffff; border-radius:16px; padding:22px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
 .hint { color:#6b7280; font-size:14px; }
 
 /* 메인 랜딩 */
-.main-welcome { text-align:center; margin:10px auto 30px; max-width:600px; }
+.main-welcome { text-align:center; margin:80px auto; max-width:600px; }
 .main-title { font-size:42px; font-weight:800; color:#111827; margin-bottom:16px; line-height:1.2; }
 .main-subtitle { font-size:18px; color:#6b7280; margin-bottom:40px; line-height:1.5; }
-.feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:24px; margin-top:20px; }
+.feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:24px; margin-top:48px; }
 .feature-card { text-align:center; padding:32px 20px; border:1px solid #e5e7eb; border-radius:16px; background:#ffffff; transition:.2s; }
 .feature-card:hover { border-color:#c7d2fe; box-shadow:0 4px 12px rgba(0,0,0,.08); transform:translateY(-2px); }
 .feature-icon { font-size:32px; margin-bottom:16px; }
@@ -117,28 +119,21 @@ def get_uploaded_files_count():
         return 0
 
 # ================== Sidebar (option_menu) ==================
+pages = ["메인", "파일 업로드", "인수인계 자료 추출", "Q&A", "스케줄 확인"]
+icons = ['house', 'cloud-upload', 'file-earmark-text', 'chat-dots', 'calendar3']
 is_uploaded = check_uploaded_files()
 
-# 파일 업로드 상태에 따라 메뉴 동적 구성
-if is_uploaded:
-    pages = ["메인", "파일 업로드", "인수인계 자료 추출", "Q&A", "스케줄 확인"]
-    icons = ['house', 'cloud-upload', 'file-earmark-text', 'chat-dots', 'calendar3']
-else:
-    pages = ["메인", "파일 업로드"]
-    icons = ['house', 'cloud-upload']
-
 with st.sidebar:
-    st.markdown('<div class="sidebar-title">BATON</div>', unsafe_allow_html=True)
-
-    # 현재 선택된 페이지가 available pages에 없으면 메인으로 리셋
-    if st.session_state.nav not in pages:
-        st.session_state.nav = "메인"
+    st.markdown('<div class="sidebar-title">Menu</div>', unsafe_allow_html=True)
 
     try:
         current_index = pages.index(st.session_state.nav)
     except ValueError:
         current_index = 0
+
+    if not is_uploaded and st.session_state.nav in ["인수인계 자료 추출", "Q&A", "스케줄 확인"]:
         st.session_state.nav = "메인"
+        current_index = 0
 
     choice = option_menu(
         None, pages, icons=icons, menu_icon=None, default_index=current_index,
@@ -151,17 +146,28 @@ with st.sidebar:
         }
     )
 
+    if not is_uploaded and choice in ["인수인계 자료 추출", "Q&A", "스케줄 확인"]:
+        choice = st.session_state.nav
+
     if choice != st.session_state.nav:
         st.session_state.nav = choice
         st.rerun()
 
-    # 파일이 업로드되지 않았을 때 안내 메시지 표시
     if not is_uploaded:
         st.markdown(
             '<div style="color:#6b7280;font-size:12px;text-align:center;margin:16px 8px 0;">'
-            '⚠ 파일을 업로드하면 추가 메뉴를 사용할 수 있습니다.'
+            '⚠ 파일을 업로드하면 모든 메뉴를 사용할 수 있습니다.'
             '</div>', unsafe_allow_html=True
         )
+
+# ================== Header ==================
+if st.session_state.nav != "메인":
+    st.markdown('<div class="baton-header">BATON</div>', unsafe_allow_html=True)
+    if is_uploaded:
+        file_count = get_uploaded_files_count()
+        st.markdown(f'<span class="status-pill">📁 업로드 문서 개수 : {file_count}개</span>', unsafe_allow_html=True)
+    else:
+        st.markdown('<span class="baton-sub">인수인계 자료를 업로드하고 기능을 시작하세요.</span>', unsafe_allow_html=True)
 
 # ================== Pages ==================
 def page_main():
@@ -205,15 +211,22 @@ def page_upload():
         st.error(f"파일 업로드 중 오류가 발생했습니다: {e}")
 
 def page_report():
+    if not is_uploaded: 
+        st.warning("먼저 파일을 업로드하세요.")
+        return
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("#### 인수인계 자료 추출")
     st.success("업로드 확인. 인수인계 요약 로직을 이 영역에 연결하세요.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 def page_qa():
+    if not is_uploaded: 
+        st.warning("먼저 파일을 업로드하세요.")
+        return
+    
     try:
-        from chatbot.chatbot_page import run_chat
-        run_chat()  
+        from chatbot import run_chat
+        run_chat(use_sidebar=False)
     except ImportError as e:
         st.error(f"챗봇 모듈을 불러올 수 없습니다: {e}")
         st.info("chatbot.py 파일이 같은 폴더에 있는지 확인해주세요.")
@@ -221,6 +234,9 @@ def page_qa():
         st.error(f"챗봇 실행 중 오류가 발생했습니다: {e}")
 
 def page_calendar():
+    if not is_uploaded: 
+        st.warning("먼저 파일을 업로드하세요.")
+        return
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("#### 스케줄 확인")
     st.success("업로드 확인. 스케줄 추출/캘린더 연동 로직을 이 영역에 연결하세요.")
