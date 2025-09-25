@@ -17,3 +17,5 @@ __pycache__/
 # IDE
 .vscode/settings.json
 .idea/
+
+file_metadata.db
