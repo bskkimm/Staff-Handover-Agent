@@ -62,7 +62,8 @@ def run_data_preprocessing():
         return False
 
 def run_upload():
-    """파일 업로드 페이지 실행"""
+    # 페이지 제목 추가
+    st.markdown('<style>h4 { margin-top: -45px !important; font-weight: 600 !important; }</style>', unsafe_allow_html=True)
     st.markdown("#### 파일 업로드")
     st.caption("지원 형식: PDF, TXT, DOCX, CSV — 여러 파일을 한 번에 올릴 수 있어요.")
 
