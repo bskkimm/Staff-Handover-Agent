@@ -1,83 +1,46 @@
-# -*- coding: utf-8 -*-
-"""
-Prototype 04A+Viz — Per-file extract → aggregate + Calendar 시각화
-"""
-
-from openai import AzureOpenAI
 import os, json, re
-from dotenv import load_dotenv
 from pathlib import Path
+from typing import Dict, Any, List, Tuple, Optional
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from typing import List, Dict, Any, Tuple, Optional
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from desk_calendar_bar_viz import render_all_months_bars
 
-# -------------------- 고정 경로 --------------------
-SCHED_DIR = "/home/hyundo/project1/Staff-Handover-Agent/handover/scheduling"
-OUT_DIR   = os.path.join(SCHED_DIR, "output")
-VIZ_DIR   = os.path.join(OUT_DIR, "out_cal_bars")
+import streamlit as st
+from openai import AzureOpenAI
 
-# 입력 폴더(전처리 TXT 위치)
-FOLDER_PATH = "/home/hyundo/project1/Staff-Handover-Agent/data"
+from handover.utils import get_uploaded_files_data
 
-# 출력 파일들(절대경로)
-OUT_MD  = os.path.join(OUT_DIR, "combined_schedule.md")
-OUT_PNG = os.path.join(OUT_DIR, "combined_schedule_timeline.png")
-OUT_ICS = os.path.join(OUT_DIR, "combined_schedule.ics")
 
-# 폴더 생성
-for d in [OUT_DIR, VIZ_DIR]:
-    os.makedirs(d, exist_ok=True)
-
-# -------------------- 설정 --------------------
-load_dotenv()
+# -------------------- 환경 및 클라이언트 --------------------
 KST = ZoneInfo("Asia/Seoul")
 TODAY_STR = datetime.now(KST).strftime("%Y-%m-%d")
+
 AZURE_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 AZURE_CHAT_DEPLOY = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT", "aicore-gpt4o")
 
-if not AZURE_API_KEY or not AZURE_ENDPOINT:
-    raise RuntimeError("AZURE_OPENAI_API_KEY / AZURE_OPENAI_ENDPOINT 설정 필요")
+client = None
+if AZURE_API_KEY and AZURE_ENDPOINT:
+    client = AzureOpenAI(api_key=AZURE_API_KEY, api_version="2024-02-01", azure_endpoint=AZURE_ENDPOINT)
 
-client = AzureOpenAI(api_key=AZURE_API_KEY, api_version="2024-02-01", azure_endpoint=AZURE_ENDPOINT)
 
-# -------------------- 유틸 --------------------
-def source_title_from_filename(filename: str) -> str:
-    base = Path(filename).stem
-    m = re.match(r'^(\d{4}[-_/\.]?\d{2}[-_/\.]?\d{2})[_\-\s\.]*(.*)$', base)
-    title = m.group(2) if m else base
-    return title.strip() or base
-
-def read_all_txt(folder_path: str):
-    base = Path(folder_path)
-    if not base.exists():
-        raise FileNotFoundError(f"폴더가 없습니다: {base.resolve()}")
-    files = list(base.rglob("*.txt"))
-    docs = []
-    for fp in files:
-        try:
-            text = fp.read_text(encoding="utf-8", errors="ignore")
-            if text.strip():
-                docs.append((fp.name, text))
-        except Exception as e:
-            print(f"[warn] {fp.name} 읽기 실패: {e}")
-    return docs
-
+# -------------------- 프롬프트 --------------------
 JSON_INSTRUCTIONS = f"""
 다음 텍스트(이메일 또는 업무일지)에서 프로젝트와 일정 이벤트를 JSON으로만 출력하세요.
 - JSON 외의 모든 텍스트 금지 (코드블록 금지).
 - 날짜는 KST로 해석. 상대 날짜는 기준일 {TODAY_STR} (KST)을 기준으로 절대 날짜로 변환.
+- start와 deadline과 title이 모두 동일하다면 하나의 이벤트로 간주.
+- start와 deadline이 모두 없으면 이벤트로 간주하지 않음.
+- start만 있으면 deadline은 start와 동일하게 설정.
 - 필드 정의:
 {{
   "projects": [
     {{
-      "project": "문서의 프로젝트/제목(Subject 정제 또는 '프로젝트:'/'제목:' 값)",
+      "project": "문서의 프로젝트/제목",
       "owners": ["담당자1","담당자2"],
       "events": [
         {{
@@ -91,30 +54,19 @@ JSON_INSTRUCTIONS = f"""
 }}
 """
 
-def extract_events_json_per_file(client, text: str) -> Optional[Dict[str, Any]]:
-    try:
-        messages = [
-            {"role": "system", "content": "당신은 신뢰성 높은 일정 파서입니다. 반드시 유효한 JSON만 출력합니다."},
-            {"role": "user", "content": JSON_INSTRUCTIONS + "\n\n텍스트:\n" + text}
-        ]
-        resp = client.chat.completions.create(
-            model=AZURE_CHAT_DEPLOY,
-            messages=messages,
-            temperature=0.0,
-            max_tokens=1000,
-        )
-        raw = resp.choices[0].message.content.strip()
-        start_idx = raw.find("{"); end_idx = raw.rfind("}")
-        if start_idx == -1 or end_idx == -1: return None
-        json_str = raw[start_idx:end_idx+1]
-        return json.loads(json_str)
-    except Exception as e:
-        print(f"[warn] JSON 추출 실패: {e}")
-        return None
+
+# -------------------- 유틸 --------------------
+def source_title_from_filename(filename: str) -> str:
+    base = Path(filename).stem
+    m = re.match(r'^(\d{4}[-_/\.?]?\d{2}[-_/\.?]?\d{2})[_\-\s\.]*(.*)$', base)
+    title = m.group(2) if m else base
+    return title.strip() or base
+
 
 def to_dt(s: str) -> Optional[datetime]:
     s = (s or "").strip()
-    if not s: return None
+    if not s:
+        return None
     try:
         if len(s) == 16:
             return datetime.strptime(s, "%Y-%m-%d %H:%M")
@@ -124,25 +76,54 @@ def to_dt(s: str) -> Optional[datetime]:
         return None
     return None
 
+
 def normalize_project(title: str) -> str:
     t = re.sub(r'^\s*(Re:|Fwd:)\s*', '', title or '', flags=re.IGNORECASE)
     t = re.sub(r'\[[^\]]+\]\s*', '', t).strip()
     return t or (title or "Untitled")
 
+
 def normalize_owners(owners: List[str]):
     clean = []
     for o in owners or []:
         o = re.sub(r'<[^>]+>', '', o).strip()
-        if o: clean.append(o)
+        if o:
+            clean.append(o)
     return tuple(sorted(set(clean)))
 
-def aggregate_all(files_with_text):
-    groups = {}
+
+# -------------------- LLM 추출 --------------------
+def extract_events_json_per_file(client: AzureOpenAI, text: str) -> Optional[Dict[str, Any]]:
+    try:
+        messages = [
+            {"role": "system", "content": "당신은 신뢰성 높은 일정 파서입니다. 반드시 유효한 JSON만 출력합니다."},
+            {"role": "user", "content": JSON_INSTRUCTIONS + "\n\n텍스트:\n" + text},
+        ]
+        resp = client.chat.completions.create(
+            model=AZURE_CHAT_DEPLOY,
+            messages=messages,
+            temperature=0.0,
+            max_tokens=1000,
+        )
+        raw = resp.choices[0].message.content.strip()
+        start_idx = raw.find("{"); end_idx = raw.rfind("}")
+        if start_idx == -1 or end_idx == -1:
+            return None
+        json_str = raw[start_idx:end_idx+1]
+        return json.loads(json_str)
+    except Exception:
+        return None
+
+
+# -------------------- 집계 및 마크다운 --------------------
+def aggregate_all(files_with_text: List[Tuple[str, str]]):
+    groups: Dict[Tuple[str, Tuple[str, ...]], Dict[str, Any]] = {}
     for fname, text in files_with_text:
-        data = extract_events_json_per_file(client, text)
-        if not data or "projects" not in data: continue
+        data = extract_events_json_per_file(client, text) if client else None
+        if not data or "projects" not in data:
+            continue
         for proj in data["projects"]:
-            project = normalize_project(proj.get("project",""))
+            project = normalize_project(proj.get("project", ""))
             owners = normalize_owners(proj.get("owners", []))
             events = proj.get("events", []) or []
             source_title = source_title_from_filename(fname)
@@ -152,20 +133,18 @@ def aggregate_all(files_with_text):
             g = groups[key]
             g["sources"].add(source_title)
             for ev in events:
-                st = to_dt(ev.get("start",""))
-                dl = to_dt(ev.get("deadline",""))
-                if st:
-                    if not g["start"] or st < g["start"]:
-                        g["start"] = st
-                if dl:
-                    if not g["deadline"] or dl > g["deadline"]:
-                        g["deadline"] = dl
-                if st and not dl:
-                    if not g["deadline"] or st > g["deadline"]:
-                        g["deadline"] = st
+                st_dt = to_dt(ev.get("start", ""))
+                dl_dt = to_dt(ev.get("deadline", ""))
+                if st_dt and (not g["start"] or st_dt < g["start"]):
+                    g["start"] = st_dt
+                if dl_dt and (not g["deadline"] or dl_dt > g["deadline"]):
+                    g["deadline"] = dl_dt
+                if st_dt and not dl_dt and (not g["deadline"] or st_dt > g["deadline"]):
+                    g["deadline"] = st_dt
     return groups
 
-def build_markdown(groups):
+
+def build_markdown(groups: Dict[Tuple[str, Tuple[str, ...]], Dict[str, Any]]) -> str:
     blocks = ["# 인수인계 일정 요약", ""]
     def sort_key(item):
         (project, owners), g = item
@@ -181,13 +160,14 @@ def build_markdown(groups):
         blocks += [title, f"Start: {start_s} (KST)", f"Deadline: {deadline_s} (KST)", f"Source: {src_show}", ""]
     return "\n".join(blocks)
 
+
 def save_markdown(md_text: str, out_path: str):
     Path(out_path).write_text(md_text, encoding="utf-8")
-    print(f"[ok] Markdown 저장: {out_path}")
 
-def parse_summary_blocks(md_text: str):
+
+def _parse_summary_blocks(md_text: str) -> List[Dict[str, str]]:
     lines = [ln.strip() for ln in md_text.splitlines()]
-    items = []
+    items: List[Dict[str, str]] = []
     i = 0
     while i < len(lines):
         ln = lines[i]
@@ -200,37 +180,35 @@ def parse_summary_blocks(md_text: str):
                 project = m.group(1).strip()
                 owners = m.group(2).strip()
             start = deadline = source = ""
-            j = i+1
-            while j < len(lines) and lines[j]:
-                if lines[j].startswith("Start:"):
-                    start = lines[j].split("Start:",1)[1].strip()
-                elif lines[j].startswith("Deadline:"):
-                    deadline = lines[j].split("Deadline:",1)[1].strip()
-                elif lines[j].startswith("Source:"):
-                    source = lines[j].split("Source:",1)[1].strip()
+            j = i + 1
+            while j < len(lines):
+                current_line = lines[j]
+                if not current_line:
+                    break
+                if current_line.startswith("Start:"):
+                    start = current_line.split("Start:", 1)[1].strip()
+                elif current_line.startswith("Deadline:"):
+                    deadline = current_line.split("Deadline:", 1)[1].strip()
+                elif current_line.startswith("Source:"):
+                    source = current_line.split("Source:", 1)[1].strip()
                 j += 1
-            start = start.replace("(KST)","").strip()
-            deadline = deadline.replace("(KST)","").strip()
-            items.append({
-                "project": project,
-                "owners": owners,
-                "start": start,
-                "deadline": deadline,
-                "source": source
-            })
+            start = start.replace("(KST)", "").strip()
+            deadline = deadline.replace("(KST)", "").strip()
+            items.append({"project": project, "owners": owners, "start": start, "deadline": deadline, "source": source})
             i = j
         else:
             i += 1
     return items
 
+
 def visualize_calendar(md_text: str, out_png: str):
-    items = parse_summary_blocks(md_text)
+    items = _parse_summary_blocks(md_text)
     if not items:
-        print("[info] 시각화할 항목이 없습니다.")
         return
     def parse_dt(s: str):
-        s = s.replace("(KST)","").strip()
-        if not s: return None
+        s = s.replace("(KST)", "").strip()
+        if not s:
+            return None
         try:
             if len(s) == 16:
                 return datetime.strptime(s, "%Y-%m-%d %H:%M")
@@ -241,10 +219,11 @@ def visualize_calendar(md_text: str, out_png: str):
         return None
     starts, ends, labels = [], [], []
     for it in items:
-        st = parse_dt(it["start"]) or datetime(2100,1,1)
-        ed = parse_dt(it["deadline"]) or st + timedelta(hours=1)
-        starts.append(st); ends.append(ed)
-        labels.append(f'{it["project"]} ({it["owners"]})' if it["owners"] else it["project"])
+        st_dt = parse_dt(it["start"]) or datetime(2100,1,1)
+        ed_dt = parse_dt(it["deadline"]) or st_dt + timedelta(hours=1)
+        starts.append(st_dt)
+        ends.append(ed_dt)
+        labels.append(f"{it['project']} ({it['owners']})" if it["owners"] else it["project"])
     order = sorted(range(len(starts)), key=lambda k: starts[k])
     starts = [starts[k] for k in order]
     ends = [ends[k] for k in order]
@@ -265,12 +244,12 @@ def visualize_calendar(md_text: str, out_png: str):
     fig.tight_layout()
     fig.savefig(out_png, dpi=150)
     plt.close(fig)
-    print(f"[ok] 타임라인 PNG 저장: {out_png}")
+
 
 def write_ics(md_text: str, out_ics: str):
-    items = parse_summary_blocks(md_text)
+    items = _parse_summary_blocks(md_text)
     def parse_dt_full(s: str, default_time="00:00"):
-        s = s.replace("(KST)","").strip()
+        s = s.replace("(KST)", "").strip()
         if len(s) == 10:
             s = s + f" {default_time}"
         try:
@@ -286,13 +265,15 @@ def write_ics(md_text: str, out_ics: str):
         "X-WR-TIMEZONE:Asia/Seoul",
     ]
     for idx, it in enumerate(items):
-        st = parse_dt_full(it["start"], "00:00")
-        ed = parse_dt_full(it["deadline"], "18:00")
-        if not st: continue
-        if not ed: ed = st
+        st_dt = parse_dt_full(it["start"], "00:00")
+        ed_dt = parse_dt_full(it["deadline"], "18:00")
+        if not st_dt:
+            continue
+        if not ed_dt:
+            ed_dt = st_dt
         uid = f"{idx}-{abs(hash(it['project']+it['owners']+it['start']))}@local"
-        dtstart = st.strftime("%Y%m%dT%H%M%S")
-        dtend = ed.strftime("%Y%m%dT%H%M%S")
+        dtstart = st_dt.strftime("%Y%m%dT%H%M%S")
+        dtend = ed_dt.strftime("%Y%m%dT%H%M%S")
         summary = f"{it['project']} ({it['owners']})" if it["owners"] else it["project"]
         desc = f"Source: {it['source']}"
         lines += [
@@ -307,21 +288,25 @@ def write_ics(md_text: str, out_ics: str):
         ]
     lines += ["END:VCALENDAR"]
     Path(out_ics).write_text("\n".join(lines), encoding="utf-8")
-    print(f"[ok] ICS 저장: {out_ics}")
 
-def main():
-    files_with_text = read_all_txt(FOLDER_PATH)
-    if not files_with_text:
-        print("처리할 TXT가 없습니다.")
-        return
+
+# -------------------- 엔트리 함수 --------------------
+def build_schedule_from_db() -> Dict[str, Any]:
+    files_data = get_uploaded_files_data()
+    if not files_data:
+        st.warning("업로드된 파일이 없습니다.")
+        return {"success": False, "outputs": {}}
+
+    files_with_text = list(files_data.items())
     groups = aggregate_all(files_with_text)
-    md = build_markdown(groups)
-    save_markdown(md, OUT_MD)
-    visualize_calendar(md, OUT_PNG)
-    write_ics(md, OUT_ICS)
-    # viz 산출물도 scheduling/output 하위에 생성
-    render_all_months_bars(OUT_MD, VIZ_DIR)
-    print(f"[ok] Viz 폴더: {VIZ_DIR}")
 
-if __name__ == "__main__":
-    main()
+    output_dir = os.path.join(os.path.dirname(__file__), "output")
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Only PNG output per requirement
+    md_content = build_markdown(groups)
+    png_path = os.path.join(output_dir, "combined_schedule_timeline.png")
+    visualize_calendar(md_content, png_path)
+
+    return {"success": True, "outputs": {"timeline_png": png_path}}
+

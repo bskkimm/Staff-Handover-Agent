@@ -35,8 +35,8 @@ SYSTEM_PERSONA = """
 """
 
 # Adjust these to where your embedding script saved them
-INDEX_PATH = "./handover/chatbot/rag_store/index.faiss"
-META_PATH = "./handover/chatbot/rag_store/meta.jsonl"
+INDEX_PATH = "./chatbot/rag_store/index.faiss"
+META_PATH = "./chatbot/rag_store/meta.jsonl"
 
 # ----------------------------
 # Utils
@@ -88,6 +88,95 @@ def build_context(snippets: List[Tuple[float, Dict]]) -> str:
         lines.append(f"[{src}] {m['text']}")
     return "\n\n".join(lines)
 
+def build_index_from_files(files_data: Dict[str, str], index_path: str, meta_path: str):
+    """업로드된 파일들로 FAISS 인덱스 구축"""
+    import tempfile
+    import shutil
+    
+    # 임시 디렉토리에 txt 파일들 생성
+    temp_dir = tempfile.mkdtemp()
+    
+    try:
+        # 파일들을 임시 디렉토리에 저장
+        for filename, content in files_data.items():
+            base_name = Path(filename).stem
+            txt_filename = f"{base_name}.txt"
+            txt_path = os.path.join(temp_dir, txt_filename)
+            
+            with open(txt_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+        
+        # build_index.py를 사용하여 인덱스 구축
+        import subprocess
+        import sys
+        
+        # build_index.py 실행
+        cmd = [
+            sys.executable, "build_index.py",
+            "--input_dir", temp_dir,
+            "--out_index", os.path.join(temp_dir, "index.faiss"),
+            "--out_meta", os.path.join(temp_dir, "meta.jsonl"),
+            "--max_tokens", "800",
+            "--overlap", "100",
+            "--batch_size", "32"
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.dirname(__file__))
+        
+        if result.returncode != 0:
+            raise Exception(f"인덱스 구축 실패: {result.stderr}")
+        
+        # 생성된 인덱스 파일들을 목적지로 복사
+        temp_index = os.path.join(temp_dir, "index.faiss")
+        temp_meta = os.path.join(temp_dir, "meta.jsonl")
+        
+        if os.path.exists(temp_index) and os.path.exists(temp_meta):
+            # 목적지 디렉토리 생성
+            os.makedirs(os.path.dirname(index_path), exist_ok=True)
+            
+            # 파일 복사
+            shutil.copy2(temp_index, index_path)
+            shutil.copy2(temp_meta, meta_path)
+        else:
+            raise Exception("인덱스 파일 생성 실패")
+            
+    finally:
+        # 임시 디렉토리 정리
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def build_index_from_preprocessed_json(index_path: str, meta_path: str):
+    """preprocessed.json을 단일 문서로 취급하여 임베딩 후 인덱스 구축"""
+    from pathlib import Path
+    import tempfile, shutil, json
+    json_path = Path(__file__).resolve().parent.parent / "data" / "preprocessed" / "preprocessed.json"
+    if not json_path.exists():
+        raise FileNotFoundError("preprocessed.json not found. 먼저 전처리를 실행하세요.")
+
+    temp_dir = tempfile.mkdtemp()
+    try:
+        txt_path = os.path.join(temp_dir, "preprocessed.txt")
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(json.dumps(data, ensure_ascii=False, indent=2))
+
+        import subprocess, sys
+        cmd = [
+            sys.executable, "build_index.py",
+            "--input_dir", temp_dir,
+            "--out_index", os.path.join(temp_dir, "index.faiss"),
+            "--out_meta", os.path.join(temp_dir, "meta.jsonl"),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.dirname(__file__))
+        if result.returncode != 0:
+            raise Exception(f"인덱스 구축 실패: {result.stderr}")
+
+        os.makedirs(os.path.dirname(index_path), exist_ok=True)
+        shutil.copy2(os.path.join(temp_dir, "index.faiss"), index_path)
+        shutil.copy2(os.path.join(temp_dir, "meta.jsonl"), meta_path)
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
 def build_user_prompt(question: str, context: str) -> str:
     return f"""
 {SYSTEM_PERSONA}
@@ -132,8 +221,9 @@ def _render_msg(role: str, content: str):
 # ----------------------------
 # Streamlit App
 # ----------------------------
-def run_chat():
-    st.set_page_config(page_title="Handover RAG (TXT)", layout="wide")
+def run_chat(use_sidebar=True):
+    if use_sidebar:
+        st.set_page_config(page_title="Handover RAG (TXT)", layout="wide")
     st.markdown("""
     <style>
     .qa-container { max-width: 900px; margin:auto; }
@@ -160,9 +250,28 @@ def run_chat():
     try:
         index, meta = load_rag_store(INDEX_PATH, META_PATH)
     except FileNotFoundError as e:
-        st.error(str(e))
-        st.info("💡 먼저 임베딩 스크립트를 실행해 txt.faiss / txt.jsonl을 생성하세요.")
-        return
+        st.warning("🔍 FAISS 인덱스가 없습니다. 업로드된 파일들로 인덱스를 생성합니다...")
+        
+        # 인덱스 자동 생성
+        try:
+            from utils import get_uploaded_files_data
+            files_data = get_uploaded_files_data()
+            
+            if not files_data:
+                st.error("❌ 업로드된 파일이 없습니다. 먼저 파일을 업로드해주세요.")
+                return
+            
+            # 임베딩 생성
+            with st.spinner("🔄 문서 임베딩을 생성하고 인덱스를 구축 중..."):
+                build_index_from_files(files_data, INDEX_PATH, META_PATH)
+            
+            # 다시 로드
+            index, meta = load_rag_store(INDEX_PATH, META_PATH)
+            st.success("✅ FAISS 인덱스가 성공적으로 생성되었습니다!")
+            
+        except Exception as build_error:
+            st.error(f"❌ 인덱스 생성 실패: {build_error}")
+            return
 
     # Client
     try:

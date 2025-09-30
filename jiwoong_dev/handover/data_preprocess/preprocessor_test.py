@@ -887,6 +887,8 @@ def extract_tags(content: str) -> List[str]:
 #입력 데이터 타입(메일, 회의록, 개인기록) 확인하고 타입에 따라 맞는 파싱 함수로 보내기
 def process_all_files(files_dict):
     """모든 파일을 타입별로 분류하고 파싱"""
+    print(f"🔍 {len(files_dict)}개 파일 처리 시작")
+    
     result = {
         'emails': [],
         'meetings': [],
@@ -894,22 +896,38 @@ def process_all_files(files_dict):
     }
     
     for filename, content in files_dict.items():
-        # 1. 각 파일의 타입 감지
-        file_type = detect_file_type(content)
-        
-        # 2. 타입에 맞는 파서 실행
-        if file_type == FileType.EMAIL:
-            parsed = parse_email(content)
-            result['emails'].extend(parsed)
+        try:
+            print(f"📄 파일 처리 중: {filename}")
+            print(f"📏 내용 길이: {len(content)} 문자")
             
-        elif file_type == FileType.MEETING:
-            parsed = parse_meeting_minutes(content)
-            result['meetings'].append(parsed)
+            # 1. 각 파일의 타입 감지
+            file_type = detect_file_type(content)
+            print(f"🏷️ 감지된 타입: {file_type}")
             
-        elif file_type == FileType.PERSONAL:
-            parsed = parse_personal_note(content, filename)
-            result['personal_notes'].append(parsed)
+            # 2. 타입에 맞는 파서 실행
+            if file_type == FileType.EMAIL:
+                parsed = parse_email(content)
+                result['emails'].extend(parsed)
+                print(f"📧 이메일 {len(parsed)}개 파싱 완료")
+                
+            elif file_type == FileType.MEETING:
+                parsed = parse_meeting_minutes(content)
+                result['meetings'].append(parsed)
+                print(f"🤝 회의록 1개 파싱 완료")
+                
+            elif file_type == FileType.PERSONAL:
+                parsed = parse_personal_note(content, filename)
+                result['personal_notes'].append(parsed)
+                print(f"📝 개인노트 1개 파싱 완료")
+            else:
+                print(f"❓ 알 수 없는 타입: {file_type}")
+                
+        except Exception as e:
+            print(f"❌ 파일 처리 오류 ({filename}): {e}")
+            import traceback
+            traceback.print_exc()
     
+    print(f"✅ 처리 완료 - 이메일: {len(result['emails'])}, 회의록: {len(result['meetings'])}, 개인노트: {len(result['personal_notes'])}")
     return result
 def convert_to_json(data: dict, output_file: str = None) -> str:
     def custom_serializer(obj):

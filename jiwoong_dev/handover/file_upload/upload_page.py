@@ -1,6 +1,7 @@
 # file_upload/upload_page.py
 import streamlit as st
 from file_upload.database import file_db
+from handover.preprocess.logic import run_preprocess_from_db
 
 def human_size(bytes_size: int) -> str:
     """파일 크기를 사람이 읽기 쉬운 형태로 변환"""
@@ -77,15 +78,20 @@ def handle_upload(files):
     # 결과 메시지 표시
     if added > 0:
         st.success(f"{added}개 파일을 성공적으로 업로드했어요.")
+        # 업로드 직후 전처리 자동 실행
+        with st.spinner("업로드된 파일 전처리 중..."):
+            pre_res = run_preprocess_from_db()
+        pre_sum = pre_res.get("summary", {})
+        st.success(
+            f"전처리 완료 · 총 {pre_sum.get('total_files', 0)}개 | 이메일 {pre_sum.get('emails', 0)} | 회의록 {pre_sum.get('meetings', 0)} | 개인노트 {pre_sum.get('personal_notes', 0)}"
+        )
+        st.info("업로드 및 전처리가 완료되었습니다. 좌측 메뉴에서 요약/챗봇/스케줄을 진행하세요.")
     if duplicates > 0:
         st.info(f"{duplicates}개 파일은 이미 업로드되어 있어서 건너뛰었어요.")
     if errors:
         for error in errors:
             st.error(error)
-    
-    # 파일이 추가되었으면 페이지 새로고침
-    if added > 0:
-        st.rerun()
+    # 새로고침은 즉시 하지 않고 메시지 노출 유지
 
 def handle_delete_all():
     """전체 파일 삭제 처리"""
