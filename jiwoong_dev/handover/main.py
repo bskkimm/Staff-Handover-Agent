@@ -1,8 +1,21 @@
-# main.py
+# main.py - 통합된 BATON Streamlit 앱
 from datetime import datetime
 import os
+import sys
+from pathlib import Path
 import streamlit as st
 from streamlit_option_menu import option_menu
+from dotenv import load_dotenv
+from utils import check_azure_openai_config, get_file_type_icon, format_file_size
+
+# Ensure package imports work when running via Streamlit
+CURRENT_DIR = Path(__file__).resolve().parent
+PARENT_DIR = CURRENT_DIR.parent
+if str(PARENT_DIR) not in sys.path:
+    sys.path.insert(0, str(PARENT_DIR))
+
+# .env 파일 로드
+load_dotenv()
 
 st.set_page_config(page_title="BATON", page_icon="🏃‍♂️", layout="centered", initial_sidebar_state="collapsed")
 
@@ -208,34 +221,29 @@ def page_main():
     """, unsafe_allow_html=True)
 
 def page_upload():
-    """파일 업로드 페이지"""
+    # 기존 업로드 페이지 재사용
     try:
-        from file_upload.upload_page import run_upload
+        from handover.file_upload.upload_page import run_upload
         run_upload()
     except Exception as e:
         st.error(f"파일 업로드 중 오류가 발생했습니다: {e}")
 
 def page_report():
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("#### 인수인계 자료 추출")
-    st.success("업로드 확인. 인수인계 요약 로직을 이 영역에 연결하세요.")
-    st.markdown('</div>', unsafe_allow_html=True)
+    # report module page
+    from handover.report.report_page import render as report_render
+    report_render()
 
 def page_qa():
-    try:
-        from chatbot import run_chat
-        run_chat(use_sidebar=False)
-    except ImportError as e:
-        st.error(f"챗봇 모듈을 불러올 수 없습니다: {e}")
-        st.info("chatbot.py 파일이 같은 폴더에 있는지 확인해주세요.")
-    except Exception as e:
-        st.error(f"챗봇 실행 중 오류가 발생했습니다: {e}")
+    from handover.chatbot.chatbot_page import render as chatbot_render
+    chatbot_render()
 
 def page_calendar():
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("#### 스케줄 확인")
-    st.success("업로드 확인. 스케줄 추출/캘린더 연동 로직을 이 영역에 연결하세요.")
-    st.markdown('</div>', unsafe_allow_html=True)
+    from handover.schedule.schedule_page import render as schedule_render
+    schedule_render()
+
+# ================== Helper Functions ==================
+def display_processing_results(results):
+    pass
 
 # ================== Router ==================
 if st.session_state.nav == "메인":
