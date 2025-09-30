@@ -7,7 +7,7 @@ from typing import Tuple
 # Keep these consistent with rag_app.py
 INDEX_PATH = Path("./data/rag_store/index.faiss")
 META_PATH  = Path("./data/rag_store/meta.jsonl")
-INPUT_DIR  = Path("./data/preprocessed")
+INPUT_DIR  = Path("./data/preprocessed_data")
 
 def _latest_mtime_under(root: Path) -> float:
     latest = 0.0
