@@ -20,14 +20,12 @@ def process_uploaded_files(output_filename: str = "No_1.txt") -> Dict:
     Returns:
         Dict: 처리 결과
     """
-    # Staff-Handover-Agent 폴더 내의 경로로 설정 (절대경로로 명시적 설정)
-    current_dir = Path(__file__).parent.parent.parent.parent  # handover/data_preprocess -> handover -> Staff-Handover-Agent -> SK_AX_Bootcamp
-    uploads_dir = current_dir / "Staff-Handover-Agent" / "data" / "uploads"
-    output_dir = current_dir / "Staff-Handover-Agent" / "data" / "preprocessed_data"
-    
-    # 절대 경로로 변환하여 확실하게 설정
-    uploads_dir = uploads_dir.resolve()
-    output_dir = output_dir.resolve()
+    # Staff-Handover-Agent 실행 위치 기준으로 경로 설정
+    # __file__: Staff-Handover-Agent/handover/data_preprocess/upload_processor.py
+    # 실행 위치: Staff-Handover-Agent
+    current_dir = Path(__file__).parent.parent.parent  # handover/data_preprocess -> handover -> Staff-Handover-Agent
+    uploads_dir = current_dir / "data" / "uploads"
+    output_dir = current_dir / "data" / "preprocessed_data"
     
     # 디렉토리 생성 (존재하지 않는 경우)
     uploads_dir.mkdir(parents=True, exist_ok=True)
@@ -91,9 +89,9 @@ def process_uploaded_files(output_filename: str = "No_1.txt") -> Dict:
 
 def get_next_file_number() -> int:
     """다음 파일 번호를 가져옵니다 (No_1.txt, No_2.txt, ...)"""
-    current_dir = Path(__file__).parent.parent.parent.parent  # handover/data_preprocess -> handover -> Staff-Handover-Agent -> SK_AX_Bootcamp
-    output_dir = current_dir / "Staff-Handover-Agent" / "data" / "preprocessed_data"
-    output_dir = output_dir.resolve()  # 절대 경로로 변환
+    # Staff-Handover-Agent 실행 위치 기준으로 경로 설정
+    current_dir = Path(__file__).parent.parent.parent  # handover/data_preprocess -> handover -> Staff-Handover-Agent
+    output_dir = current_dir / "data" / "preprocessed_data"
     
     existing_files = list(output_dir.glob("No_*.txt"))
     if not existing_files:
