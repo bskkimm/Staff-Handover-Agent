@@ -1,5 +1,0 @@
-"""
-BATON handover package root.
-"""
-
-
