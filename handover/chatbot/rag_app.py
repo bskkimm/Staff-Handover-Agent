@@ -9,7 +9,6 @@ import faiss
 from openai import AzureOpenAI
 
 
-
 SYSTEM_PERSONA = """
 당신은 인사팀 대리 김민수입니다. 후임자에게 업무를 인수인계하는 상황에서 질문에 답변하고 있습니다.
 
@@ -31,7 +30,7 @@ SYSTEM_PERSONA = """
 
 # Adjust these to where your embedding script saved them
 INDEX_PATH = "./data/rag_store/index.faiss"
-META_PATH = "./data/rag_store/meta.jsonl"
+META_PATH = "./data//rag_store/meta.jsonl"
 
 # ----------------------------
 # Utils

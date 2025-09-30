@@ -28,3 +28,7 @@ data/file_metadata.db
 data/file_metadata.db
 >>>>>>> 38ffed9 (WIP: save local changes before rebase)
 data/file_metadata.db
+
+data/rag_store
+data/uploads
+data/preprocessed_data
