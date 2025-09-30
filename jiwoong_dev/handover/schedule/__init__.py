@@ -1,5 +1,0 @@
-"""
-Schedule module package.
-"""
-
-
