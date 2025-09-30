@@ -205,10 +205,19 @@ def page_upload():
         st.error(f"파일 업로드 중 오류가 발생했습니다: {e}")
 
 def page_report():
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("#### 인수인계 자료 추출")
-    st.success("업로드 확인. 인수인계 요약 로직을 이 영역에 연결하세요.")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.caption("버튼을 누르면 현재 전처리된 데이터로 인수인계 요약 레포트를 생성하고 화면에 표시합니다.")
+
+    from summary_report.report_service import generate_and_save_report
+
+    if st.button("인수인계 자료 확인하기", use_container_width=True, type="primary"):
+        with st.spinner("요약 레포트를 생성 중입니다..."):
+            md, out_path = generate_and_save_report("test_report.md")
+            if md:
+                st.success(f"생성 완료: {out_path}")
+                st.markdown(md)
+            else:
+                st.error("레포트 생성에 실패했습니다. 환경변수 및 네트워크를 확인하세요.")
 
 def page_qa():
     try:
