@@ -1,6 +1,7 @@
 from openai import AzureOpenAI
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 # 환경변수 로드
 load_dotenv()
@@ -17,11 +18,13 @@ def test_llm_markdown_output():
     OpenAI GPT-4 API로 마크다운 형식 보고서 생성 테스트
     """
     
-    # 실제 파일에서 데이터 읽기
-    file_path = "../../data/preprocessed_data/No_1.txt"
+    # 실제 파일에서 데이터 읽기 (스크립트 기준 상대 경로를 결합)
+    script_dir = Path(__file__).resolve().parent
+    rel_to_script = Path("..") / ".." / "data" / "preprocessed_data" / "No_1.txt"
+    file_path = script_dir / rel_to_script
     
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(str(file_path), 'r', encoding='utf-8') as f:
             working_tasks = f.read()
         print(f"파일 로드 성공: {file_path}")
     except FileNotFoundError:
@@ -46,7 +49,7 @@ def test_llm_markdown_output():
     **이메일 내용:**
     {working_tasks}
     
-    다음 구조로 작성해주세요:
+    다음 구조로 작성하세요:
     [프로젝트 개요]
     -- 프로젝트 명, 프로젝트 기간, 프로젝트 목표
     [진행 현황]
@@ -77,11 +80,11 @@ def test_llm_markdown_output():
         markdown_report = response.choices[0].message.content
         
         print("=" * 50)
-        print("인수인계 요약 레포트 ")
+        print("인수인계 요약 레포트")
         print("=" * 50)
         print(markdown_report)
         print("=" * 50)
-        
+
         return markdown_report
         
     except Exception as e:
@@ -95,7 +98,7 @@ def save_markdown_to_file(markdown_content, filename="test_report.md"):
     try:
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(markdown_content)
-        print(f"마크다운 파일 저장 완료: {filename}")
+        print(f"인수인계 요약 레포트 저장 완료: {filename}")
     except Exception as e:
         print(f"파일 저장 오류: {e}")
 
@@ -104,4 +107,4 @@ if __name__ == "__main__":
     
     if result:
         save_markdown_to_file(result, "test_report.md")
-        print("\n테스트 완료! test_report.md 파일 확인")
+        print("\n test_report.md 파일 확인")
