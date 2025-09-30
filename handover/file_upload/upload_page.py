@@ -10,6 +10,57 @@ def human_size(bytes_size: int) -> str:
         bytes_size /= 1024.0
     return f"{bytes_size:.1f}PB"
 
+def check_preprocessing_status():
+    """전처리된 데이터가 있는지 확인"""
+    try:
+        import os
+        from pathlib import Path
+        
+        # 전처리된 데이터 디렉토리 확인 (절대경로로 명시적 설정)
+        current_dir = Path(__file__).parent.parent.parent.parent  # handover/file_upload -> handover -> Staff-Handover-Agent -> SK_AX_Bootcamp
+        preprocessed_dir = current_dir / "Staff-Handover-Agent" / "data" / "preprocessed_data"
+        preprocessed_dir = preprocessed_dir.resolve()  # 절대 경로로 변환
+        
+        if preprocessed_dir.exists():
+            json_files = list(preprocessed_dir.glob("*.txt"))
+            return len(json_files) > 0
+        return False
+    except Exception:
+        return False
+
+def run_data_preprocessing():
+    """업로드된 파일들을 전처리하여 구조화된 데이터로 변환"""
+    try:
+        from data_preprocess import process_with_auto_filename
+        
+        # 진행 상태 표시
+        with st.spinner("📊 파일을 분석하고 구조화된 데이터로 변환 중..."):
+            # 전처리 실행
+            result = process_with_auto_filename()
+            
+            if result['success']:
+                st.success(f"✅ 전처리 완료! {result['processed_files']}개 파일이 처리되었습니다.")
+                st.info(f"📁 출력 파일: {result['output_file']}")
+                
+                # 처리된 파일 목록 표시
+                if result.get('files_processed'):
+                    st.markdown("**처리된 파일들:**")
+                    for file_name in result['files_processed']:
+                        st.markdown(f"- {file_name}")
+                
+                return True
+            else:
+                st.error(f"❌ 전처리 실패: {result['message']}")
+                return False
+                
+    except ImportError as e:
+        st.error(f"❌ 전처리 모듈을 불러올 수 없습니다: {e}")
+        st.info("data_preprocess 패키지가 올바르게 설치되어 있는지 확인해주세요.")
+        return False
+    except Exception as e:
+        st.error(f"❌ 전처리 중 오류가 발생했습니다: {e}")
+        return False
+
 def run_upload():
     # 페이지 제목 추가
     st.markdown('<style>h4 { margin-top: -45px !important; font-weight: 600 !important; }</style>', unsafe_allow_html=True)
@@ -84,8 +135,10 @@ def handle_upload(files):
         for error in errors:
             st.error(error)
     
-    # 파일이 추가되었으면 페이지 새로고침
+    # 파일이 추가되었으면 자동 전처리 실행 및 페이지 새로고침
     if added > 0:
+        # 자동 전처리 실행
+        run_data_preprocessing()
         st.rerun()
 
 def handle_delete_all():
@@ -135,6 +188,25 @@ def render_file_list():
                             st.error("파일 삭제에 실패했습니다.")
                     except Exception as e:
                         st.error(f"파일 삭제 중 오류가 발생했습니다: {str(e)}")
+        
+        # 전처리 상태 확인 및 실행 버튼
+        st.divider()
+        st.markdown("##### 📊 데이터 전처리")
+        
+        # 전처리 상태 확인
+        is_preprocessed = check_preprocessing_status()
+        
+        if is_preprocessed:
+            st.success("✅ 전처리가 완료되었습니다. 인수인계 자료를 확인할 수 있습니다.")
+        else:
+            st.info("📝 업로드된 파일을 전처리하여 구조화된 데이터로 변환하세요.")
+            
+            if st.button("🔄 전처리 실행", use_container_width=True, type="secondary"):
+                # 전처리 실행
+                preprocessing_success = run_data_preprocessing()
+                
+                if preprocessing_success:
+                    st.rerun()  # 페이지 새로고침하여 상태 업데이트
         
         # 다른 기능 활성화 안내
         st.info("왼쪽 메뉴의 기능들이 활성화되었습니다. 원하는 기능으로 이동하세요. ✅")

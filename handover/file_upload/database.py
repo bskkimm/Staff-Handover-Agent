@@ -8,7 +8,8 @@ from file_upload.models import UploadedFile, get_db_session
 
 class FileDatabase:
     def __init__(self):
-        self.upload_dir = os.getenv("UPLOAD_DIR", "./data/uploads")
+        # Staff-Handover-Agent 폴더 내의 data/uploads 경로로 설정 (상대경로)
+        self.upload_dir = os.getenv("UPLOAD_DIR", "./Staff-Handover-Agent/data/uploads")
         # 업로드 디렉토리 생성
         Path(self.upload_dir).mkdir(parents=True, exist_ok=True)
     
