@@ -2,19 +2,66 @@
 Upload-time & batch shared utilities:
 - get_client(): AzureOpenAI client from .env
 - read_text(uploaded_file): read .txt/.md content (for UI uploads)
-- chunk_text(text): token-aware splitting
+- chunk_text(text): token-aware splitting (JSON-aware via preprocess.text_ingest)
+- chunk_text_with_meta(text): same as chunk_text but also returns metadata rows
 - embed_texts(client, model, texts): batch embeddings (L2-normalized)
 """
+# at the top with other imports
+from dotenv import load_dotenv
+load_dotenv()  # loads .env from the current working directory
 
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Tuple, Any
 
 import numpy as np
 import tiktoken
 from openai import AzureOpenAI
 
+# ------------------------------------------------------------------
+# Wire up the JSON-aware dispatcher (requires preprocess/ & chunkers/)
+# ------------------------------------------------------------------
+# Inside preprocess/text_ingest.py, you import chunkers.json_chunker.
+# Here, we set the tokenizer once and delegate calls to that module.
 
+from .preprocess.text_ingest import (
+    set_tokenizer as _set_tokenizer,
+    chunk_text as _chunk_text_impl,
+    chunk_text_with_meta as _chunk_text_with_meta_impl,
+)
+
+_tok = tiktoken.get_encoding("cl100k_base")
+_set_tokenizer(_tok)
+
+# ---- new: robust file reader for .txt/.md/.json
+def read_file(path: Path) -> str:
+    suffix = path.suffix.lower()
+    if suffix in [".txt", ".md", ".json"]:
+        return path.read_text(encoding="utf-8", errors="ignore")
+    return ""
+
+# ---- keep old signatures but add optional source (backward compatible)
+def chunk_text(
+    text: str,
+    max_tokens: int = 800,
+    overlap: int = 100,
+    source: str | None = None,
+) -> List[str]:
+    """Delegates to preprocess.text_ingest; JSON → schema-aware, else sliding window."""
+    return _chunk_text_impl(text, max_tokens, overlap, source=source)
+
+def chunk_text_with_meta(
+    text: str,
+    max_tokens: int = 800,
+    overlap: int = 100,
+    source: str | None = None,
+) -> Tuple[List[str], List[Dict[str, Any]]]:
+    """Like chunk_text, but also returns metadata dicts for meta.jsonl."""
+    return _chunk_text_with_meta_impl(text, max_tokens, overlap, source=source)
+
+# ------------------------------------------------------------------
+# Azure OpenAI + file utilities
+# ------------------------------------------------------------------
 def get_client() -> AzureOpenAI:
     api_key = os.getenv("AZURE_OPENAI_API_KEY")
     endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
@@ -22,7 +69,6 @@ def get_client() -> AzureOpenAI:
     if not all([api_key, endpoint, api_version]):
         raise RuntimeError("Missing Azure OpenAI env vars")
     return AzureOpenAI(api_key=api_key, api_version=api_version, azure_endpoint=endpoint)
-
 
 def read_text(uploaded_file) -> str:
     """
@@ -40,28 +86,11 @@ def read_text(uploaded_file) -> str:
     except Exception:
         return b.decode("utf-8", errors="ignore")
 
-
-_tok = tiktoken.get_encoding("cl100k_base")
-
-
-def chunk_text(text: str, max_tokens: int = 800, overlap: int = 100) -> List[str]:
-    if not text.strip():
-        return []
-    ids = _tok.encode(text)
-    chunks: List[str] = []
-    start = 0
-    while start < len(ids):
-        end = min(start + max_tokens, len(ids))
-        chunks.append(_tok.decode(ids[start:end]))
-        if end == len(ids):
-            break
-        start = max(0, end - overlap)
-    return chunks
-
-
+# ------------------------------------------------------------------
+# Embeddings
+# ------------------------------------------------------------------
 def _l2_normalize(a: np.ndarray) -> np.ndarray:
     return a / (np.linalg.norm(a, axis=1, keepdims=True) + 1e-12)
-
 
 def embed_texts(client: AzureOpenAI, model: str, texts: List[str]) -> np.ndarray:
     """

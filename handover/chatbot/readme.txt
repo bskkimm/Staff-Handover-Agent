@@ -14,10 +14,17 @@ Saves:
 
 CLI usage:
 
-python build_index.py --input_dir ./data \
-  --out_index ./handover/chatbot/rag_store/index.faiss \
-  --out_meta  ./handover/chatbot/rag_store/meta.jsonl \
-  --max_tokens 800 --overlap 100 --batch_size 32
+cd change/this/to/your/path/Staff-Handover-Agent
+python -m handover.chatbot.build_index \
+  --input_dir ./data/preprocessed \
+  --out_index ./data/rag_store/index.faiss \
+  --out_meta  ./data/rag_store/meta.jsonl \
+  --max_tokens 800 \
+  --overlap 100 \
+  --embedding_model text-embedding-3-large \
+  --embed_batch 128
+
+
 
 
 2. ingest.py
@@ -29,6 +36,7 @@ python build_index.py --input_dir ./data \
     read_text(uploaded_file) → read .txt/.md content from an upload/file-like object
 
     chunk_text(text, max_tokens=800, overlap=100) → token-aware splitting
+    : schema-aware chunking using a pre-defined json file.
 
     embed_texts(client, model, texts) → L2-normalized embeddings as np.ndarray [n, d]
 
@@ -64,3 +72,7 @@ python build_index.py --input_dir ./data \
 
 5. displays the answer plus the cited chunks.
 
+
+5. index_manager.py
+
+- when the Q&A chatbot runs(clicked), the vector index is present, up-to-date, and rebuilt if necessary
