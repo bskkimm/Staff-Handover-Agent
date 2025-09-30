@@ -16,10 +16,9 @@ def check_preprocessing_status():
         import os
         from pathlib import Path
         
-        # 전처리된 데이터 디렉토리 확인 (절대경로로 명시적 설정)
-        current_dir = Path(__file__).parent.parent.parent.parent  # handover/file_upload -> handover -> Staff-Handover-Agent -> SK_AX_Bootcamp
-        preprocessed_dir = current_dir / "Staff-Handover-Agent" / "data" / "preprocessed_data"
-        preprocessed_dir = preprocessed_dir.resolve()  # 절대 경로로 변환
+        # Staff-Handover-Agent 실행 위치 기준으로 경로 설정
+        current_dir = Path(__file__).parent.parent.parent  # handover/file_upload -> handover -> Staff-Handover-Agent
+        preprocessed_dir = current_dir / "data" / "preprocessed_data"
         
         if preprocessed_dir.exists():
             json_files = list(preprocessed_dir.glob("*.txt"))

@@ -18,4 +18,6 @@ __pycache__/
 .vscode/settings.json
 .idea/
 
+# 데이터베이스 파일
+data/file_metadata.db
 file_metadata.db
