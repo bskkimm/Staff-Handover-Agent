@@ -24,18 +24,17 @@ Usage:
 
 from __future__ import annotations
 
-# at the top with other imports
-from dotenv import load_dotenv
-load_dotenv()  # loads .env from the current working directory
-
+import argparse
+import json
 import os
 import sys
-import json
-import argparse
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
 import numpy as np
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
 # Local modules
 # Project layout assumption:

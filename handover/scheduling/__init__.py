@@ -10,10 +10,11 @@ from pydantic import BaseModel, Field
 from langgraph.graph import Graph, START, END
 from openai import AzureOpenAI
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 # 환경변수 로드
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
 # Azure OpenAI 클라이언트 설정
 client = AzureOpenAI(

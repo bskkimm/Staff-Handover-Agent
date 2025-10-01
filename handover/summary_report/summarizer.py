@@ -4,13 +4,21 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # 환경변수 로드
-load_dotenv()
+load_dotenv(dotenv_path=Path(__file__).parent.parent.parent / '.env')
+
+API_KEY = (os.getenv('AZURE_OPENAI_API_KEY') or '').strip()
+API_VERSION = (os.getenv('AZURE_OPENAI_API_VERSION') or '').strip()
+AZURE_ENDPOINT = (os.getenv('AZURE_OPENAI_ENDPOINT') or '').strip()
+CHAT_DEPLOYMENT = (os.getenv('AZURE_OPENAI_CHAT_DEPLOYMENT') or '').strip()
+
+if not all([API_KEY, API_VERSION, AZURE_ENDPOINT, CHAT_DEPLOYMENT]):
+    raise RuntimeError('필수 Azure OpenAI 환경변수가 비어 있습니다. .env 설정을 확인하세요.')
 
 # Azure OpenAI 클라이언트 설정
 client = AzureOpenAI(
-    api_key=os.getenv('AZURE_OPENAI_API_KEY'),
-    api_version="2024-02-01",  # 최신 API 버전
-    azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT')  
+    api_key=API_KEY,
+    api_version=API_VERSION,
+    azure_endpoint=AZURE_ENDPOINT,
 )
 
 def test_llm_markdown_output():
@@ -136,23 +144,26 @@ def test_llm_markdown_output():
     try:
         # Azure OpenAI API 호출
         response = client.chat.completions.create(
-            model="aicore-gpt4o",  
+            model=CHAT_DEPLOYMENT,
             messages=[
                 {
-                    "role": "system", 
+                    "role": "system",
                     "content": "당신은 조직 업무 관리 전문가입니다. 전임자로서 후임자에게 인수인계를 하기 위한 명확하고 체계적인 마크다운 보고서를 작성합니다."
                 },
                 {
-                    "role": "user", 
+                    "role": "user",
                     "content": prompt
                 }
             ],
-            max_tokens=1800,
+            max_tokens=3500,
             temperature=0.2
         )
-        
-        
-        markdown_report = response.choices[0].message.content
+
+        choice = response.choices[0]
+        if choice.finish_reason and choice.finish_reason != "stop":
+            print(f"[warn] 모델이 '{choice.finish_reason}' 상태로 종료되었습니다. 출력이 잘린 것일 수 있습니다.")
+
+        markdown_report = choice.message.content
         
         print("=" * 50)
         print("인수인계 요약 레포트")

@@ -6,17 +6,16 @@ Upload-time & batch shared utilities:
 - chunk_text_with_meta(text): same as chunk_text but also returns metadata rows
 - embed_texts(client, model, texts): batch embeddings (L2-normalized)
 """
-# at the top with other imports
-from dotenv import load_dotenv
-load_dotenv()  # loads .env from the current working directory
-
 import os
 from pathlib import Path
 from typing import List, Dict, Tuple, Any
 
 import numpy as np
 import tiktoken
+from dotenv import load_dotenv
 from openai import AzureOpenAI
+
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
 # ------------------------------------------------------------------
 # Wire up the JSON-aware dispatcher (requires preprocess/ & chunkers/)
