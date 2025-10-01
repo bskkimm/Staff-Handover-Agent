@@ -18,12 +18,12 @@ import matplotlib.dates as mdates
 from desk_calendar_bar_viz import render_all_months_bars
 
 # -------------------- 고정 경로 --------------------
-SCHED_DIR = "/home/hyundo/project1/Staff-Handover-Agent/handover/scheduling"
+SCHED_DIR = "./handover/scheduling"
 OUT_DIR   = os.path.join(SCHED_DIR, "output")
 VIZ_DIR   = os.path.join(OUT_DIR, "out_cal_bars")
 
 # 입력 파일(전처리 TXT 위치)
-INPUT_FILE = "/home/hyundo/project1/Staff-Handover-Agent/data/preprocessed_data/No_1.txt"
+INPUT_FILE = "./data/preprocessed_data/No_1.txt"
 
 # 출력 파일들(절대경로)
 OUT_MD  = os.path.join(OUT_DIR, "combined_schedule.md")
