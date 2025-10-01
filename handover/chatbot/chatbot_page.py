@@ -25,7 +25,7 @@ def run_chat():
     # ----- Page title + styles -----
     st.markdown('<style>h4 { margin-top: -45px !important; font-weight: 600 !important; }</style>', unsafe_allow_html=True)
     st.markdown("#### 업무 Q&A 챗봇")
-    st.caption("업로드된 인수인계 자료를 근거로 전임자의 페르소나로 답변합니다.")
+    st.caption("업로드된 인수인계 자료를 근거로 바통이가 답변합니다.")
 
     st.markdown("""
     <style>
@@ -66,7 +66,7 @@ def run_chat():
             st.info("💡 .env 파일의 Azure OpenAI 설정과 인덱스 경로를 확인해주세요.")
             return
 
-    # ----- Session state -----
+    # ----- Session state (첫 인사 제거됨) -----
     if "qa_history" not in st.session_state:
         st.session_state.qa_history = []
 
@@ -86,7 +86,7 @@ def run_chat():
                 st.rerun()
 
     # ----- Chat input -----
-    query = st.chat_input("전임자에게 질문해보세요")
+    query = st.chat_input("바통이에게 질문해보세요")
 
     if query:
         # Add & render user message
@@ -94,13 +94,13 @@ def run_chat():
         _render_msg("user", query)
 
         # Get answer
-        with st.spinner("🤔답변을 준비하고 있습니다..."):
+        with st.spinner("💭 바통이가 자료를 찾고 있어요..."):
             result = chatbot.ask(query, k=6)
 
         if result.get("error"):
             response = result["error"]
         else:
-            response = result.get("answer", "그 부분은 제가 가진 자료에서는 확인이 안 되네요")
+            response = result.get("answer", "해당 내용은 제공된 자료에서 확인되지 않네요")
 
         # Add & render assistant message
         st.session_state.qa_history.append({"role": "assistant", "content": response})
@@ -108,9 +108,9 @@ def run_chat():
 
         # Sources (if any)
         if result.get("sources") and not result.get("error"):
-            with st.expander("🔎 사용한 출처 보기"):
-                for source in result["sources"]:
-                    st.write(f"- {source['filename']} (chunk {source['chunk_index']}), 유사도: {source['score']:.3f}")
+            with st.expander("📚 참고한 문서"):
+                for i, source in enumerate(result["sources"], 1):
+                    st.write(f"{i}. {source['filename']} (관련도: {source['score']:.1%})")
 
         # Re-render to place reset button immediately
         st.rerun()
