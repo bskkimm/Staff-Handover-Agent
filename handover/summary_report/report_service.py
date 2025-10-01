@@ -1,6 +1,9 @@
 from pathlib import Path
 from typing import Tuple, Optional
+from dotenv import load_dotenv
 
+# 환경변수 로드
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
 def _summary_dir() -> Path:
     return Path(__file__).resolve().parent
@@ -30,5 +33,4 @@ def load_report(filename: str = "test_report.md") -> Optional[str]:
     if p.exists():
         return p.read_text(encoding="utf-8")
     return None
-
 

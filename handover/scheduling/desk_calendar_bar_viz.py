@@ -156,14 +156,16 @@ def _ideal_text_color(rgb):
     y = 0.2126*r + 0.7152*g + 0.0722*b
     return "black" if y > 0.6 else "white"
 
-def render_month_bars(md_text: str, year: int, month: int, out_png: str, max_lanes_per_week=5, color_map=None, label_once_per_span=True, today: date=None):
+def render_month_bars(md_text: str, year: int, month: int, out_png: str, max_lanes_per_week=3, color_map=None, label_once_per_span=True, today: date=None):
     if today is None:
-        today = date(2024, 7, 11)  # prototype default
+        today = date(2024, 7, 24)  # prototype default
     _set_korean_font()
 
     items = _parse_blocks(md_text)
     spans = []
     projects = set()
+    
+    # 일정을 기간별로 정렬하여 처리
     for it in items:
         st_dt = _parse_dt(it["start"], "00:00")
         ed_dt = _parse_dt(it["deadline"], "18:00") or st_dt
@@ -171,9 +173,19 @@ def render_month_bars(md_text: str, year: int, month: int, out_png: str, max_lan
         if ed_dt < st_dt: ed_dt = st_dt
         title = it["project"].strip()
         projects.add(title)
-        spans.append({"title": title, "st": st_dt.date(), "ed": ed_dt.date()})
+        duration = (ed_dt.date() - st_dt.date()).days
+        spans.append({
+            "title": title, 
+            "st": st_dt.date(), 
+            "ed": ed_dt.date(),
+            "duration": duration
+        })
+    
     if not spans:
         raise RuntimeError("No valid spans")
+        
+    # 기간이 긴 순서대로 정렬하여 먼저 배치
+    spans.sort(key=lambda x: x["duration"], reverse=True)
 
     if color_map is None:
         color_map = _build_color_map(sorted(projects))
@@ -189,7 +201,8 @@ def render_month_bars(md_text: str, year: int, month: int, out_png: str, max_lan
 
     rows = len(weeks) + 1
     cols = 7
-    fig_w, fig_h = 12, max(8, 1.3 * rows)
+    # 행이 많을 때 더 큰 세로 여백을 확보
+    fig_w, fig_h = 12, max(8, 1.5 * rows)
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     ax.axis("off")
 
@@ -198,7 +211,7 @@ def render_month_bars(md_text: str, year: int, month: int, out_png: str, max_lan
     grid_h = 1.0 - top_margin - bottom_margin
     cell_w = grid_w / cols
     cell_h = grid_h / rows
-    day_header_band = 0.28 * cell_h
+    day_header_band = 0.55 * cell_h  # 날짜 영역을 더욱 확장
 
     ax.text(0.5, 0.98, f"{year}년 {month}월", ha="center", va="top", fontsize=18, transform=ax.transAxes, zorder=7)
 
@@ -238,9 +251,19 @@ def render_month_bars(md_text: str, year: int, month: int, out_png: str, max_lan
             if lane >= max_lanes_per_week: continue
 
             y0 = 1.0 - top_margin - (r+2) * cell_h
-            lane_h = (cell_h - day_header_band) / (max_lanes_per_week + 0.6)
-            bar_y = y0 + day_header_band + lane * lane_h + 0.02
-            bar_h = lane_h * 0.8
+            usable_height = cell_h - day_header_band
+            
+            # 일정 바 레이아웃 조정
+            min_lane_height = usable_height / (max_lanes_per_week * 2)  # 최소 레인 높이 설정
+            lane_h = max(min_lane_height, usable_height / (max_lanes_per_week + 1.5))  # 여백 더 증가
+            
+            # 전체 바 영역의 높이 계산
+            total_bar_height = lane_h * max_lanes_per_week
+            
+            # 바 시작 위치를 날짜 영역 이후로 확실히 조정
+            start_offset = day_header_band + (usable_height - total_bar_height) * 0.3  # 시작 위치를 더 아래로
+            bar_y = y0 + start_offset + (lane * lane_h)  # 바 위치 조정
+            bar_h = lane_h * 0.6  # 바 높이 약간 더 감소
 
             base_color = _build_color_map([sp["title"]])[sp["title"]] if color_map is None else color_map.get(sp["title"])
             is_active = (today and a <= today <= b)
@@ -262,11 +285,15 @@ def render_month_bars(md_text: str, year: int, month: int, out_png: str, max_lan
             if today_c is not None and c0 <= today_c <= c1:
                 if c0 <= today_c - 1:
                     _draw_range(c0, today_c - 1, (0.85, 0.85, 0.85, 1.0))
+                    if label_once_per_span:
+                        ax.text((left_margin + c0 * cell_w) + 0.02, bar_y + bar_h/2,
+                                sp["title"] + " (진행중)", ha="left", va="center", fontsize=9,
+                                color="black", zorder=8, clip_on=True)
                 xw = _draw_range(today_c, c1, base_color)
-                if label_once_per_span:
-                    ax.text((left_margin + c0 * cell_w) + 0.02, bar_y + bar_h/2,
-                            sp["title"] + " (진행중)", ha="left", va="center", fontsize=9,
-                            color=_ideal_text_color(base_color), zorder=8, clip_on=True)
+                # today 칸에도 일정명 표시
+                ax.text((left_margin + today_c * cell_w) + 0.02, bar_y + bar_h/2,
+                        sp["title"] + " (진행중)", ha="left", va="center", fontsize=9,
+                        color=_ideal_text_color(base_color), zorder=8, clip_on=True)
             else:
                 seg_end_date = col_date.get(c1)
                 if today and seg_end_date and seg_end_date < today:
@@ -288,7 +315,7 @@ def render_month_bars(md_text: str, year: int, month: int, out_png: str, max_lan
 
 def render_all_months_bars(md_path: str, out_dir: str, today: date=None):
     if today is None:
-        today = date(2024, 7, 11)  # prototype default
+        today = date(2024, 7, 23)  # prototype default
     md_text = Path(md_path).read_text(encoding="utf-8")
 
     lines = [ln.strip() for ln in md_text.splitlines()]
