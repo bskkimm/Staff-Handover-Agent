@@ -1,12 +1,29 @@
 # main.py
 from datetime import datetime
-import os
+import runpy
+import sys
+from pathlib import Path
 import streamlit as st
 from streamlit_option_menu import option_menu
 from dotenv import load_dotenv
 
 # 환경변수 로드
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+load_dotenv(PROJECT_ROOT / ".env")
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+SCHED_VIZ_DIR = (BASE_DIR / "scheduling" / "output" / "out_cal_bars").resolve()
+SCHED_SCRIPT = (BASE_DIR / "scheduling" / "scheduling_main.py").resolve()
+
+def run_scheduling_pipeline() -> None:
+    """Execute the scheduling pipeline script in an isolated namespace."""
+    sched_dir = SCHED_SCRIPT.parent
+    if str(sched_dir) not in sys.path:
+        sys.path.insert(0, str(sched_dir))
+    runpy.run_path(str(SCHED_SCRIPT), run_name="__main__")
 
 st.set_page_config(page_title="BATON", page_icon="🏃‍♂️", layout="centered", initial_sidebar_state="collapsed")
 
@@ -211,13 +228,12 @@ def page_report():
     from summary_report.report_service import generate_and_save_report
 
     if st.button("인수인계 자료 확인하기", use_container_width=True, type="primary"):
-        with st.spinner("요약 레포트를 생성 중입니다..."):
-            md, out_path = generate_and_save_report("test_report.md")
-            if md:
-                st.success(f"생성 완료: {out_path}")
-                st.markdown(md)
-            else:
-                st.error("레포트 생성에 실패했습니다. 환경변수 및 네트워크를 확인하세요.")
+            with st.spinner("요약 레포트를 생성 중입니다..."):
+                md, out_path = generate_and_save_report("test_report.md")
+                if md:
+                    st.markdown(md)
+                else:
+                    st.error("레포트 생성에 실패했습니다. 환경변수 및 네트워크를 확인하세요.")
 
 def page_qa():
     try:
@@ -232,7 +248,41 @@ def page_qa():
 def page_calendar():
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("#### 스케줄 확인")
-    st.success("업로드 확인. 스케줄 추출/캘린더 연동 로직을 이 영역에 연결하세요.")
+
+    if "schedule_images" not in st.session_state:
+        st.session_state.schedule_images = []
+
+    if st.button("스케줄 추출하기", use_container_width=True, type="primary"):
+        with st.spinner("스케줄을 추출 중입니다..."):
+            try:
+                run_scheduling_pipeline()
+                png_files = sorted(SCHED_VIZ_DIR.glob("*.png"))
+                st.session_state.schedule_images = [str(p) for p in png_files]
+                if png_files:
+                    st.success("스케줄 추출을 완료했습니다.")
+                else:
+                    st.warning("생성된 스케줄 이미지가 없습니다. 입력 데이터를 확인해주세요.")
+            except Exception as exc:
+                st.session_state.schedule_images = []
+                st.error(f"스케줄 추출 중 오류가 발생했습니다: {exc}")
+
+    images = st.session_state.get("schedule_images", [])
+    if images:
+        st.markdown("##### 인수인계 업무 달력")
+        displayed = False
+        for img_path in images:
+            path = Path(img_path)
+            if path.exists():
+                st.image(str(path), use_container_width=True)
+                displayed = True
+        if not displayed:
+            st.info("표시할 스케줄 이미지를 찾지 못했습니다. 다시 생성해 주세요.")
+    else:
+        if not SCHED_VIZ_DIR.exists():
+            st.info("스케줄 시각화 폴더를 찾을 수 없습니다. 버튼을 눌러 새로 생성하세요.")
+        else:
+            st.info("생성된 스케줄 이미지가 없습니다. 버튼을 눌러 스케줄을 추출하세요.")
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ================== Router ==================
