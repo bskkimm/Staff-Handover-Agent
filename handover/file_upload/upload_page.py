@@ -1,6 +1,8 @@
 # file_upload/upload_page.py
 import streamlit as st
 from file_upload.database import file_db
+from pathlib import Path
+import shutil
 
 def human_size(bytes_size: int) -> str:
     """파일 크기를 사람이 읽기 쉬운 형태로 변환"""
@@ -9,6 +11,56 @@ def human_size(bytes_size: int) -> str:
             return f"{bytes_size:3.1f}{unit}"
         bytes_size /= 1024.0
     return f"{bytes_size:.1f}PB"
+
+def check_preprocessing_status():
+    """전처리된 데이터가 있는지 확인"""
+    try:
+        import os
+        from pathlib import Path
+        
+        # Staff-Handover-Agent 실행 위치 기준으로 경로 설정
+        current_dir = Path(__file__).parent.parent.parent  # handover/file_upload -> handover -> Staff-Handover-Agent
+        preprocessed_dir = current_dir / "data" / "preprocessed_data"
+        
+        if preprocessed_dir.exists():
+            json_files = list(preprocessed_dir.glob("*.txt"))
+            return len(json_files) > 0
+        return False
+    except Exception:
+        return False
+
+def run_data_preprocessing():
+    """업로드된 파일들을 전처리하여 구조화된 데이터로 변환"""
+    try:
+        from data_preprocess import process_with_auto_filename
+        
+        # 진행 상태 표시
+        with st.spinner("📊 파일을 분석하고 구조화된 데이터로 변환 중..."):
+            # 전처리 실행
+            result = process_with_auto_filename()
+            
+            if result['success']:
+                st.success(f"✅ 전처리 완료! {result['processed_files']}개 파일이 처리되었습니다.")
+                st.info(f"📁 출력 파일: {result['output_file']}")
+                
+                # 처리된 파일 목록 표시
+                if result.get('files_processed'):
+                    st.markdown("**처리된 파일들:**")
+                    for file_name in result['files_processed']:
+                        st.markdown(f"- {file_name}")
+                
+                return True
+            else:
+                st.error(f"❌ 전처리 실패: {result['message']}")
+                return False
+                
+    except ImportError as e:
+        st.error(f"❌ 전처리 모듈을 불러올 수 없습니다: {e}")
+        st.info("data_preprocess 패키지가 올바르게 설치되어 있는지 확인해주세요.")
+        return False
+    except Exception as e:
+        st.error(f"❌ 전처리 중 오류가 발생했습니다: {e}")
+        return False
 
 def run_upload():
     # 페이지 제목 추가
@@ -84,19 +136,66 @@ def handle_upload(files):
         for error in errors:
             st.error(error)
     
-    # 파일이 추가되었으면 페이지 새로고침
+    # 파일이 추가되었으면 자동 전처리 실행 및 페이지 새로고침
     if added > 0:
+        # 자동 전처리 실행
+        run_data_preprocessing()
         st.rerun()
 
 def handle_delete_all():
     """전체 파일 삭제 처리"""
     try:
+        # 1) 업로드된 파일 + 메타레코드 삭제 (DB 기준)
         deleted_count = file_db.delete_all_files()
-        if deleted_count > 0:
-            st.success(f"{deleted_count}개 파일을 모두 삭제했어요.")
-            st.rerun()
-        else:
-            st.info("삭제할 파일이 없습니다.")
+
+        # 2) 아티팩트 디렉토리/파일 정리 (업로드 폴더, 전처리 결과, RAG 스토어, 메타 DB)
+        project_root = Path(__file__).parent.parent.parent  # .../Staff-Handover-Agent
+        uploads_dir = project_root / "data" / "uploads"
+        preprocessed_dir = project_root / "data" / "preprocessed_data"
+        rag_store_dir = project_root / "data" / "rag_store"
+        db_file = project_root / "data" / "file_metadata.db"
+
+        # Helper: remove all contents of a directory (but keep the dir)
+        def _empty_dir(path: Path):
+            if path.exists() and path.is_dir():
+                for child in path.iterdir():
+                    if child.is_file() or child.is_symlink():
+                        try:
+                            child.unlink()
+                        except Exception:
+                            pass
+                    elif child.is_dir():
+                        try:
+                            shutil.rmtree(child, ignore_errors=True)
+                        except Exception:
+                            pass
+            else:
+                path.mkdir(parents=True, exist_ok=True)
+
+        # Empty uploads directory regardless of DB state
+        _empty_dir(uploads_dir)
+
+        # Remove entire preprocessed and rag store directories
+        if preprocessed_dir.exists():
+            shutil.rmtree(preprocessed_dir, ignore_errors=True)
+        if rag_store_dir.exists():
+            shutil.rmtree(rag_store_dir, ignore_errors=True)
+
+        # Delete metadata DB file
+        if db_file.exists():
+            try:
+                db_file.unlink()
+            except Exception:
+                pass
+
+        # Feedback
+        msg_parts = [f"업로드 {deleted_count}개 삭제"]
+        if preprocessed_dir.exists():
+            pass
+        if rag_store_dir.exists():
+            pass
+        st.success("전체 삭제가 완료되었습니다. (업로드, 전처리 결과, 임베딩, 메타데이터)")
+        st.rerun()
     except Exception as e:
         st.error(f"파일 삭제 중 오류가 발생했습니다: {str(e)}")
 
@@ -135,6 +234,25 @@ def render_file_list():
                             st.error("파일 삭제에 실패했습니다.")
                     except Exception as e:
                         st.error(f"파일 삭제 중 오류가 발생했습니다: {str(e)}")
+        
+        # 전처리 상태 확인 및 실행 버튼
+        st.divider()
+        st.markdown("##### 📊 데이터 전처리")
+        
+        # 전처리 상태 확인
+        is_preprocessed = check_preprocessing_status()
+        
+        if is_preprocessed:
+            st.success("✅ 전처리가 완료되었습니다. 인수인계 자료를 확인할 수 있습니다.")
+        else:
+            st.info("📝 업로드된 파일을 전처리하여 구조화된 데이터로 변환하세요.")
+            
+            if st.button("🔄 전처리 실행", use_container_width=True, type="secondary"):
+                # 전처리 실행
+                preprocessing_success = run_data_preprocessing()
+                
+                if preprocessing_success:
+                    st.rerun()  # 페이지 새로고침하여 상태 업데이트
         
         # 다른 기능 활성화 안내
         st.info("왼쪽 메뉴의 기능들이 활성화되었습니다. 원하는 기능으로 이동하세요. ✅")

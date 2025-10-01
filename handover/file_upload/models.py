@@ -25,6 +25,7 @@ class UploadedFile(Base):
 
 def get_db_engine():
     """데이터베이스 엔진 생성 및 테이블 초기화"""
+    # Staff-Handover-Agent 실행 위치 기준으로 DB 경로 설정
     db_path = os.getenv("UPLOAD_DB_PATH", "./data/file_metadata.db")
     
     # DB 파일이 저장될 디렉토리 생성

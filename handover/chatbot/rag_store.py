@@ -38,6 +38,36 @@ def save_store(index, meta: List[Dict], index_path: str, meta_path: str):
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
+def save(index_path: str, meta_path: str, vectors: np.ndarray, chunks: List[str], metas: List[Dict]):
+    """
+    Compatibility wrapper used by build_index.py:
+      - builds a FAISS IP index for cosine on already L2-normalized vectors
+      - merges each meta dict with its chunk 'text'
+      - writes index.faiss + meta.jsonl
+    """
+    if vectors is None or vectors.size == 0:
+        raise ValueError("No vectors to save.")
+    if len(chunks) != len(metas) or vectors.shape[0] != len(chunks):
+        raise ValueError(
+            f"Length mismatch: vecs={vectors.shape[0]}, chunks={len(chunks)}, metas={len(metas)}"
+        )
+
+    # Build index
+    dim = int(vectors.shape[1])
+    index = create_empty_index(dim)
+    # Assume vectors are already L2-normalized upstream.
+    add_vectors(index, vectors.astype("float32"))
+
+    # Combine meta with text
+    meta_rows = []
+    for m, t in zip(metas, chunks):
+        row = dict(m)
+        row["text"] = t
+        meta_rows.append(row)
+
+    save_store(index, meta_rows, index_path, meta_path)
+
+
 def create_empty_index(dim: int):
     """Cosine similarity via inner product on L2-normalized vectors."""
     return faiss.IndexFlatIP(dim)

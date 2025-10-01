@@ -29,8 +29,8 @@ SYSTEM_PERSONA = """
 """
 
 # Adjust these to where your embedding script saved them
-INDEX_PATH = "./handover/chatbot/rag_store/index.faiss"
-META_PATH = "./handover/chatbot/rag_store/meta.jsonl"
+INDEX_PATH = "./data/rag_store/index.faiss"
+META_PATH = "./data//rag_store/meta.jsonl"
 
 # ----------------------------
 # Utils
@@ -96,7 +96,6 @@ def build_user_prompt(question: str, context: str) -> str:
 - 제공된 문서 내용만 기반으로 답변해요.
 - 문서에 없으면 '그 부분은 제가 가진 자료에서는 확인이 안 되네요'라고 말해요.
 - 정확한 날짜/시간은 KST로 명시해요.
-- 마지막에 [filename#chunkN] 형태로 출처를 간단히 적어줘요.
 """.strip()
 
 def chat_with_context(client: AzureOpenAI, system_prompt: str, user_prompt: str) -> str:
