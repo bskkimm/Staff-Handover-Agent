@@ -10,12 +10,12 @@ from typing import Dict, Optional
 from .main_processor import process_and_export_json
 
 
-def process_uploaded_files(output_filename: str = "No_1.json") -> Dict:
+def process_uploaded_files(output_filename: str = "No_1.txt") -> Dict:
     """
     업로드된 파일들을 처리하여 JSON으로 저장
     
     Args:
-        output_filename: 출력 파일명 (기본값: "No_1.json")
+        output_filename: 출력 파일명 (기본값: "No_1.txt")
     
     Returns:
         Dict: 처리 결과
@@ -88,12 +88,12 @@ def process_uploaded_files(output_filename: str = "No_1.json") -> Dict:
 
 
 def get_next_file_number() -> int:
-    """다음 파일 번호를 가져옵니다 (No_1.json, No_2.json, ...)"""
+    """다음 파일 번호를 가져옵니다 (No_1.txt, No_2.txt, ...)"""
     # Staff-Handover-Agent 실행 위치 기준으로 경로 설정
     current_dir = Path(__file__).parent.parent.parent  # handover/data_preprocess -> handover -> Staff-Handover-Agent
     output_dir = current_dir / "data" / "preprocessed_data"
     
-    existing_files = list(output_dir.glob("No_*.json"))
+    existing_files = list(output_dir.glob("No_*.txt"))
     if not existing_files:
         return 1
     
@@ -101,7 +101,7 @@ def get_next_file_number() -> int:
     numbers = []
     for file_path in existing_files:
         try:
-            # "No_1.json" -> "1"
+            # "No_1.txt" -> "1"
             number_str = file_path.stem.split("_")[1]
             numbers.append(int(number_str))
         except (IndexError, ValueError):
@@ -113,7 +113,7 @@ def get_next_file_number() -> int:
 def process_with_auto_filename() -> Dict:
     """자동으로 파일 번호를 생성하여 처리"""
     file_number = get_next_file_number()
-    output_filename = f"No_{file_number}.json"
+    output_filename = f"No_{file_number}.txt"
     return process_uploaded_files(output_filename)
 
 
