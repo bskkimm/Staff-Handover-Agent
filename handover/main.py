@@ -1,5 +1,4 @@
 # main.py
-from datetime import datetime
 import runpy
 import sys
 from pathlib import Path
@@ -7,16 +6,18 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 from dotenv import load_dotenv
 
-# 환경변수 로드
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
-load_dotenv(PROJECT_ROOT / ".env")
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# 환경변수 로드
+load_dotenv(PROJECT_ROOT / ".env")
+
 SCHED_VIZ_DIR = (BASE_DIR / "scheduling" / "output" / "out_cal_bars").resolve()
 SCHED_SCRIPT = (BASE_DIR / "scheduling" / "scheduling_main.py").resolve()
+
 
 def run_scheduling_pipeline() -> None:
     """Execute the scheduling pipeline script in an isolated namespace."""
@@ -244,6 +245,7 @@ def page_qa():
         st.info("chatbot.py 파일이 같은 폴더에 있는지 확인해주세요.")
     except Exception as e:
         st.error(f"챗봇 실행 중 오류가 발생했습니다: {e}")
+
 
 def page_calendar():
     st.markdown('<div class="card">', unsafe_allow_html=True)
