@@ -5,8 +5,7 @@
 #   - Temporal normalizer (LLM JSON + validation + fallback)
 #   - Time-first retrieval, then semantic re-rank
 #   - Markdown stripping for context/answers
-# Removed:
-#   - General persona/mode and intent router
+#   - Improved time-aware context with past/future filtering
 # ------------------------------------------------------------
 
 import os
@@ -107,16 +106,50 @@ def retrieve_topk(index, meta, q_vec: np.ndarray, k: int = 6) -> List[Tuple[floa
             results.append((float(s), meta[int(i)]))
     return results
 
-def build_context(snippets: List[Tuple[float, Dict]]) -> str:
+def build_context(snippets: List[Tuple[float, Dict]], now_kst: datetime) -> str:
     """
-    검색된 문서 조각들을 컨텍스트로 조합 — 마크다운 기호 제거(바통이 규칙 유지)
+    검색된 문서 조각들을 컨텍스트로 조합 — 날짜 정보를 명확히 표시
     """
     lines = []
+    
     for score, m in snippets:
         src = f"{Path(m['source']).name}#chunk{m['chunk_index_in_doc']}"
         text = m['text']
         text = text.replace('**', '').replace('*', '').replace('##', '').replace('#', '')
-        lines.append(f"[{src}] {text}")
+        
+        # 문서 날짜 파싱 및 현재와의 비교
+        doc_date_str = m.get('date', '1970-01-01 00:00')
+        try:
+            doc_date = _parse_meta_dt(doc_date_str)
+            
+            # 현재 대비 시간 차이 계산
+            days_diff = (doc_date.date() - now_kst.date()).days
+            
+            # 더 명확한 시간 표시
+            date_label = f"[문서 작성일: {doc_date.strftime('%Y년 %m월 %d일 %A')}]"
+            
+            if days_diff < -30:
+                time_marker = f"(현재보다 {abs(days_diff)}일 전 작성 - 과거 문서)"
+            elif days_diff < -7:
+                time_marker = f"(현재보다 {abs(days_diff)}일 전 작성)"
+            elif days_diff < 0:
+                time_marker = f"({abs(days_diff)}일 전 작성)"
+            elif days_diff == 0:
+                time_marker = "(오늘 작성)"
+            elif days_diff <= 7:
+                time_marker = f"({days_diff}일 후 작성 예정)"
+            elif days_diff <= 30:
+                time_marker = f"(현재보다 {days_diff}일 후 작성 예정)"
+            else:
+                time_marker = f"(현재보다 {days_diff}일 후 작성 예정 - 미래 문서)"
+            
+            date_label += f" {time_marker}"
+            
+        except:
+            date_label = f"[날짜 정보 없음: {doc_date_str}]"
+        
+        lines.append(f"[{src}] {date_label}\n{text}")
+    
     return "\n\n".join(lines)
 
 def _render_msg(role: str, content: str):
@@ -124,7 +157,6 @@ def _render_msg(role: str, content: str):
     safe = html.escape(content).replace("\n", "<br>")
     row_cls = "user" if role == "user" else "assistant"
     bub_cls = "user" if role == "user" else "assistant"
-    # Streamlit에 삽입할 채팅 말풍선 HTML을 생성한다.
     st.markdown(
         f'<div class="msg-row {row_cls}"><div class="bubble {bub_cls}">{safe}</div></div>',
         unsafe_allow_html=True
@@ -402,7 +434,7 @@ def _validate_and_repair(
         start_dt, end_dt = end_dt, start_dt
 
     if _detect_until_ko(query) and start_dt.date() > now_kst.date():
-        start_dt = _start_of_day(now_kst)  # ensure deadline starts today
+        start_dt = _start_of_day(now_kst)
 
     try:
         conf = float(data.get("confidence", 0.5))
@@ -436,7 +468,7 @@ def _snippets_in_range(meta: List[Dict], start: datetime, end: datetime, limit: 
             continue
         if start <= dt <= end:
             rows.append((1.0, m, dt))
-    rows.sort(key=lambda x: x[2])  # earliest first
+    rows.sort(key=lambda x: x[2])
     return [(s, m) for (s, m, _) in rows[:limit]]
 
 def _merge_dedup_time_first(primary: List[Tuple[float, Dict]], secondary: List[Tuple[float, Dict]], max_total: int = 40) -> List[Tuple[float, Dict]]:
@@ -483,10 +515,14 @@ def temporal_rerank(hits: List[Tuple[float, Dict]], target_date: datetime | None
 # =========================
 #            RAG
 # =========================
-def build_user_prompt(question: str, context: str, range_hint: str | None = None) -> str:
+def build_user_prompt(question: str, context: str, now_kst: datetime, range_hint: str | None = None) -> str:
     note = f"\n검색·정렬은 이 기간을 우선했어요: {range_hint} (KST)." if range_hint else ""
+    current_date_info = f"현재 날짜: {now_kst.strftime('%Y년 %m월 %d일 %A')} (KST)"
+    
     return f"""
 {SYSTEM_PERSONA}
+
+{current_date_info}
 
 다음은 인수인계 문서에서 검색된 관련 내용입니다:
 
@@ -505,11 +541,54 @@ def build_user_prompt(question: str, context: str, range_hint: str | None = None
 
 2. 업무 질문 답변 규칙:
    - 위 문서 내용만을 기반으로 정확하게 답변하세요
+   
+   - **[매우 중요] 상대적 시간 표현 해석 원칙**:
+     
+     * **두 가지 시간 기준점을 절대 혼동하지 마세요**:
+       1) 문서 속 상대 시간 (예: "다음주 회의") → 해당 문서의 [작성일] 기준으로 해석
+       2) 사용자 질문의 상대 시간 (예: "다음주에 뭐해?") → 현재 날짜({now_kst.strftime('%Y-%m-%d')}) 기준으로 해석
+     
+     * **답변 시 반드시 절대 날짜로 변환**:
+       - 모든 상대 시간 표현("다음주", "내일", "이번달" 등)을 실제 날짜로 변환하여 답변하세요
+       - 예: "다음 주 회의" → "2025년 10월 9일 수요일 회의"
+     
+     * **과거 정보 처리 규칙**:
+       - 사용자가 현재/미래 시점을 질문했는데 검색된 문서가 모두 과거인 경우:
+         → 과거 정보는 언급하지 말고, "해당 시기에 대한 자료가 확인되지 않습니다"라고만 답변
+       - 사용자가 명시적으로 과거를 질문한 경우에만 과거 정보 제공:
+         예: "지난주에 뭐했어?", "1월에 무슨 일 있었어?", "과거 이력 찾아줘", "예전에 어떻게 했어?"
+       - 현재/미래 질문에는 현재/미래 정보만 답변하세요
+     
+     * **시기 불일치 시 답변 방식**:
+       
+       [사용자: "다음주에 뭐해?" + 검색된 문서 모두 과거]
+       ❌ 나쁜 답변: "다음주 일정은 없고, 1월에 회의가 있었습니다"
+       ✅ 좋은 답변: "다음주(2025년 10월 6일~12일)에 대한 일정은 제공된 자료에서 확인되지 않네요"
+       
+       [사용자: "회의 언제야?" + 미래 회의 있음]
+       ✅ 좋은 답변: "2025년 10월 15일 화요일 14시에 회의가 예정되어 있습니다"
+       
+       [사용자: "예전에 이 업무 어떻게 했어?" + 과거 문서 있음]
+       ✅ 좋은 답변: "2025년 1월 기록을 보면, 담당자 A가 B 방식으로 처리했습니다"
+     
+     * **예시**:
+       문서: [작성일: 2025-01-10] "다음주 화요일 회의"
+       → 실제 의미: 2025년 1월 14일 화요일 회의 (문서 기준 다음주)
+       
+       사용자: "다음주에 뭐해?" (현재: 2025-10-02)
+       → 사용자 의도: 2025년 10월 6일~12일 (현재 기준 다음주)
+       → 1월 문서는 현재와 무관하므로 언급하지 않음
+       
+       올바른 답변: "다음주(2025년 10월 6일~12일)에 대한 일정은 확인되지 않네요"
+   
    - 자기소개나 "저는 바통이예요" 같은 문구는 절대 포함하지 마세요
-   - 문서에 정보가 없으면 "해당 내용은 제공된 자료에서 확인되지 않네요. 추가로 확인이 필요할 것 같습니다"라고 답변하세요
-   - 날짜, 시간, 담당자 등은 정확히 명시하세요 (시간은 KST 기준)
+   - 문서에 정보가 없거나 시간이 맞지 않으면 솔직하게 안내하세요
+   - 모든 날짜는 "YYYY년 MM월 DD일" 형식으로 명시하세요
    - 선배가 후배에게 설명하듯 따뜻하고 자연스럽게 답변하세요
-   - 도움이 될 만한 팁이 있다면 자연스럽게 추가하세요
+   
+   - 도움이 될 만한 팁:
+     * 사용자가 막연하게 물어본 경우, 더 구체적으로 물어보도록 유도할 수 있습니다
+     예: "혹시 특정 날짜나 업무에 대해 궁금하신가요? 더 구체적으로 물어보시면 정확히 찾아드릴게요"
 """.strip()
 
 def chat_with_context(client: AzureOpenAI, system_prompt: str, user_prompt: str) -> str:
@@ -591,9 +670,9 @@ class RAGChatbot:
                     'error': None
                 }
 
-            # 6) Build context and answer
-            context = build_context(hits)
-            user_prompt = build_user_prompt(query, context, range_hint=range_hint)
+            # 6) Build context and answer (now_kst 전달)
+            context = build_context(hits, now_kst)
+            user_prompt = build_user_prompt(query, context, now_kst, range_hint=range_hint)
             answer = chat_with_context(self.client, SYSTEM_PERSONA, user_prompt)
 
             # 7) Sources for UI/debug

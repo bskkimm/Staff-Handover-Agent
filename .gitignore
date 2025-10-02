@@ -18,8 +18,10 @@ __pycache__/
 .vscode/settings.json
 
 data/file_metadata.db
+
 data/rag_store
 data/uploads
 data/preprocessed_data
+
 data/schedule
 data/summary_report
