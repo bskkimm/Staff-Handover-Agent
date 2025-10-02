@@ -32,6 +32,7 @@ def main() -> None:
         print("처리할 TXT가 없습니다.")
         return
 
+    # 추출 파이프라인을 구동해 LLM 파싱→집계→산출물 생성을 수행한다.
     client = get_client()
     groups = aggregate_events(files_with_text, client)
     markdown = build_markdown(groups)

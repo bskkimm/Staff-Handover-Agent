@@ -10,6 +10,7 @@ from .llm_parser import extract_events_json_per_file
 
 
 def source_title_from_filename(filename: str) -> str:
+    # 날짜 접두사를 제거해 출처 이름을 짧게 만든다.
     base = Path(filename).stem
     match = re.match(r"^(\d{4}[-_/\.]?\d{2}[-_/\.]?\d{2})[_\-\s\.]*(.*)$", base)
     title = match.group(2) if match else base
@@ -17,12 +18,14 @@ def source_title_from_filename(filename: str) -> str:
 
 
 def normalize_project(title: str) -> str:
+    # 회신/스레드 표기를 제거해 프로젝트명을 정규화한다.
     cleaned = re.sub(r"^\s*(Re:|Fwd:)\s*", "", title or "", flags=re.IGNORECASE)
     cleaned = re.sub(r"\[[^\]]+\]\s*", "", cleaned).strip()
     return cleaned or (title or "Untitled")
 
 
 def normalize_owners(owners: Iterable[str]) -> Tuple[str, ...]:
+    # 담당자 문자열을 정규화해 정렬된 튜플로 만든다.
     cleaned = []
     for owner in owners or []:
         owner = re.sub(r"<[^>]+>", "", owner).strip()
@@ -46,6 +49,7 @@ def to_dt(value: str) -> Optional[datetime]:
 
 
 def aggregate_events(files_with_text: Iterable[Tuple[str, str]], client) -> Dict[Tuple[str, Tuple[str, ...]], Dict[str, Any]]:
+    # (프로젝트, 담당자)별로 LLM 추출 이벤트를 합쳐 전체 기간을 계산한다.
     groups: Dict[Tuple[str, Tuple[str, ...]], Dict[str, Any]] = {}
     for fname, text in files_with_text:
         data = extract_events_json_per_file(client, text)
@@ -71,6 +75,7 @@ def build_markdown(groups: Dict[Tuple[str, Tuple[str, ...]], Dict[str, Any]]) ->
     blocks = ["# 인수인계 일정 요약", ""]
 
     def sort_key(item):
+        # 시작 시각을 우선해 정렬하면서 결과를 일정하게 유지한다.
         (project, owners), info = item
         start = info["start"] or datetime(2100, 1, 1)
         return (project, owners, start)
@@ -93,6 +98,7 @@ def build_markdown(groups: Dict[Tuple[str, Tuple[str, ...]], Dict[str, Any]]) ->
 
 
 def parse_summary_blocks(md_text: str) -> List[Dict[str, str]]:
+    # build_markdown이 만든 마크다운을 다시 구조화된 데이터로 복원한다.
     lines = [line.strip() for line in md_text.splitlines()]
     items: List[Dict[str, str]] = []
     i = 0
