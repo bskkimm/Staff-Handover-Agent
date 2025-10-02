@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
-OUT_MD = (BASE_DIR / "scheduling" / "output" / "combined_schedule.md").resolve()
+OUT_MD = (PROJECT_ROOT / "data" / "schedule" / "combined_schedule.md").resolve()
 KST = ZoneInfo("Asia/Seoul")
 
 if str(PROJECT_ROOT) not in sys.path:
