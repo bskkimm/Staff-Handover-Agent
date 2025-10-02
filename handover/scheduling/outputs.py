@@ -27,6 +27,7 @@ def visualize_calendar(md_text: str, output_path: Path) -> None:
         return
 
     def parse_dt(value: str) -> Optional[datetime]:
+        # 마크다운에 있는 전체 시각과 날짜만 있는 값 모두를 허용한다.
         value = value.strip()
         if not value:
             return None
@@ -50,6 +51,7 @@ def visualize_calendar(md_text: str, output_path: Path) -> None:
         label = f"{item['project']} ({item['owners']})" if item["owners"] else item["project"]
         labels.append(label)
 
+    # 시작 시각 순으로 정렬해 막대가 시간 순으로 보이게 한다.
     order = sorted(range(len(starts)), key=lambda idx: starts[idx])
     starts = [starts[idx] for idx in order]
     ends = [ends[idx] for idx in order]
@@ -79,6 +81,7 @@ def write_ics(md_text: str, output_path: Path) -> None:
     items = parse_summary_blocks(md_text)
 
     def parse_dt_full(value: str, default_time: str = "00:00") -> Optional[datetime]:
+        # 부분 시각을 보정해 ICS 항목을 유효하게 만든다.
         value = value.replace("(KST)", "").strip()
         if len(value) == 10:
             value = f"{value} {default_time}"

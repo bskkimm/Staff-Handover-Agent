@@ -14,8 +14,10 @@ from openai import AzureOpenAI
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent.parent
 
+# 프로젝트 실행 동안 공유 환경변수를 한 번만 불러온다.
 load_dotenv(PROJECT_ROOT / ".env")
 
+# 스케줄 산출물들이 공통으로 사용하는 기준 경로.
 SCHED_DIR = BASE_DIR
 # Staff-Handover-Agent/data/schedule 디렉토리 사용
 OUT_DIR = PROJECT_ROOT / "data" / "schedule"
@@ -39,6 +41,7 @@ if not API_KEY or not AZURE_ENDPOINT or not AZURE_CHAT_DEPLOYMENT:
 
 
 def ensure_directories() -> Tuple[Path, Path]:
+    # 후속 작업이 경로 존재를 가정할 수 있도록 출력 폴더를 미리 만든다.
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     VIZ_DIR.mkdir(parents=True, exist_ok=True)
     return OUT_DIR, VIZ_DIR
@@ -46,6 +49,7 @@ def ensure_directories() -> Tuple[Path, Path]:
 
 @lru_cache()
 def get_client() -> AzureOpenAI:
+    # 인증 과정을 반복하지 않도록 Azure 클라이언트를 한 번 생성해 재사용한다.
     return AzureOpenAI(
         api_key=API_KEY,
         api_version=API_VERSION,

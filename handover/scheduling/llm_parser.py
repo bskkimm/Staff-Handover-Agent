@@ -77,6 +77,7 @@ JSON_INSTRUCTIONS = build_instructions()
 
 
 def read_input_txt(file_path: Path) -> List[Tuple[str, str]]:
+    # 파일명을 보존해 추적할 수 있도록 원본 텍스트를 읽어온다.
     items: List[Tuple[str, str]] = []
     file = Path(file_path)
     try:
@@ -91,6 +92,7 @@ def read_input_txt(file_path: Path) -> List[Tuple[str, str]]:
 
 
 def _clean_json_payload(raw: str) -> str:
+    # 자주 발생하는 포맷 오류를 완화해 JSON 파싱 성공률을 높인다.
     raw = raw.replace("\n", " ").replace("\r", "")
     raw = re.sub(r"\s+", " ", raw)
     raw = re.sub(r",\s*}", "}", raw)
@@ -103,6 +105,7 @@ def _clean_json_payload(raw: str) -> str:
 
 
 def extract_events_json_per_file(client: AzureOpenAI, text: str) -> Dict[str, Any]:
+    # 모델 호출을 재시도하며 구조화된 일정을 얻고, 실패 시 안전한 값을 반환한다.
     max_retries = 3
     for attempt in range(max_retries):
         try:

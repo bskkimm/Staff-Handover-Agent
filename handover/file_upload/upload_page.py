@@ -65,10 +65,12 @@ def run_data_preprocessing():
 def run_upload():
     # 페이지 제목 추가
     st.markdown('<style>h4 { margin-top: -45px !important; font-weight: 600 !important; }</style>', unsafe_allow_html=True)
+    # 업로드 화면의 타이틀과 설명을 노출해 사용자 흐름을 잡는다.
     st.markdown("#### 파일 업로드")
     st.caption("지원 형식: PDF, TXT, DOCX, CSV — 여러 파일을 한 번에 올릴 수 있어요.")
 
     # 파일 업로더
+    # 대용량 업로드 UX를 위해 멀티 업로드 위젯과 안내 문구를 설정한다.
     files = st.file_uploader(
         "여기에 파일을 드래그하거나 클릭해서 선택하세요.",
         type=["pdf", "txt", "docx", "csv"],
@@ -77,6 +79,7 @@ def run_upload():
     )
 
     # 버튼들
+    # 업로드/삭제 버튼을 나란히 배치해 조작 흐름을 단순화한다.
     col1, col2 = st.columns([1, 1])
     
     # 파일 선택 여부 확인을 위한 변수

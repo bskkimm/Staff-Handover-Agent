@@ -1,13 +1,20 @@
 # main.py
 import runpy
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Dict, List, Optional
+from zoneinfo import ZoneInfo
+
 import streamlit as st
 from streamlit_option_menu import option_menu
+from streamlit_calendar import calendar
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
+OUT_MD = (BASE_DIR / "scheduling" / "output" / "combined_schedule.md").resolve()
+KST = ZoneInfo("Asia/Seoul")
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -15,7 +22,10 @@ if str(PROJECT_ROOT) not in sys.path:
 # 환경변수 로드
 load_dotenv(PROJECT_ROOT / ".env")
 
+<<<<<<< HEAD
+=======
 SCHED_VIZ_DIR = (PROJECT_ROOT / "data" / "schedule" / "out_cal_bars").resolve()
+>>>>>>> upstream/develop
 SCHED_SCRIPT = (BASE_DIR / "scheduling" / "scheduling_main.py").resolve()
 
 
@@ -26,9 +36,57 @@ def run_scheduling_pipeline() -> None:
         sys.path.insert(0, str(sched_dir))
     runpy.run_path(str(SCHED_SCRIPT), run_name="__main__")
 
+
+def _parse_schedule_dt(value: str, default_time: str) -> Optional[datetime]:
+    """스케줄 문자열을 KST 기준 ISO 포맷으로 변환"""
+    value = (value or "").replace("(KST)", "").strip()
+    if not value:
+        return None
+    if len(value) == 10:
+        value = f"{value} {default_time}"
+    try:
+        dt = datetime.strptime(value, "%Y-%m-%d %H:%M")
+    except ValueError:
+        return None
+    return dt.replace(tzinfo=KST)
+
+
+def load_schedule_events(md_path: Path) -> List[Dict[str, object]]:
+    """마크다운 요약을 FullCalendar 이벤트 배열로 변환"""
+    if not md_path.exists():
+        return []
+    from handover.scheduling.schedule_builder import parse_summary_blocks
+    markdown = md_path.read_text(encoding="utf-8")
+    items = parse_summary_blocks(markdown)
+    events: List[Dict[str, object]] = []
+    for item in items:
+        start_dt = _parse_schedule_dt(item["start"], "00:00")
+        end_dt = _parse_schedule_dt(item["deadline"], "18:00")
+        if not start_dt:
+            continue
+        if not end_dt or end_dt < start_dt:
+            end_dt = start_dt + timedelta(hours=1)
+        if end_dt == start_dt:
+            end_dt = start_dt + timedelta(hours=1)
+        title = item["project"].strip()
+        if item.get("owners"):
+            title = f"{title} ({item['owners']})"
+        events.append({
+            "title": title,
+            "start": start_dt.isoformat(timespec="minutes"),
+            "end": end_dt.isoformat(timespec="minutes"),
+            "extendedProps": {
+                "source": item.get("source", ""),
+            },
+        })
+    return events
+
+
+# 초기 진입 시 타이틀·아이콘·레이아웃을 지정해 일관된 UX를 만든다.
 st.set_page_config(page_title="BATON", page_icon="🏃‍♂️", layout="centered", initial_sidebar_state="collapsed")
 
 # ================== Global Styles ==================
+# Streamlit 기본 테마 대신 커스텀 CSS를 씌워 브랜딩한 UI를 적용한다.
 st.markdown("""
 <style>
 /* 본문 폭 */
@@ -146,6 +204,7 @@ else:
     icons = ['house', 'cloud-upload']
 
 with st.sidebar:
+    # 사이드바 헤더와 내비 구성을 원하는 스타일로 정렬한다.
     st.markdown('<div class="sidebar-title">BATON</div>', unsafe_allow_html=True)
 
     # 현재 선택된 페이지가 available pages에 없으면 메인으로 리셋
@@ -161,6 +220,7 @@ with st.sidebar:
     choice = option_menu(
         None, pages, icons=icons, menu_icon=None, default_index=current_index,
         styles={
+            # 옵션 메뉴 컨테이너/아이콘/링크 색상 등을 세밀하게 지정한다.
             "container": {"padding":"0px","background-color":"#ffffff","border":"none","box-shadow":"none"},
             "icon": {"color":"#6b7280","font-size":"18px"},
             "nav-link": {"font-size":"15px","text-align":"left","margin":"4px 0","padding":"12px 16px",
@@ -183,6 +243,7 @@ with st.sidebar:
 
 # ================== Pages ==================
 def page_main():
+    # 랜딩 히어로 영역과 기능 소개 카드를 HTML/CSS로 직접 그린다.
     st.markdown("""
     <div class="main-welcome">
       <div class="main-title">BATON으로<br>완벽한 인수인계를 시작하세요</div>
@@ -248,44 +309,55 @@ def page_qa():
 
 
 def page_calendar():
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    # streamlit-calendar 컴포넌트를 사용해 인터랙티브 달력을 노출한다.
+    # st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("#### 스케줄 확인")
 
-    if "schedule_images" not in st.session_state:
-        st.session_state.schedule_images = []
+    if "schedule_events" not in st.session_state:
+        st.session_state.schedule_events = []
 
     if st.button("스케줄 추출하기", use_container_width=True, type="primary"):
         with st.spinner("스케줄을 추출 중입니다..."):
             try:
                 run_scheduling_pipeline()
-                png_files = sorted(SCHED_VIZ_DIR.glob("*.png"))
-                st.session_state.schedule_images = [str(p) for p in png_files]
-                if png_files:
+                events = load_schedule_events(OUT_MD)
+                st.session_state.schedule_events = events
+                if events:
                     st.success("스케줄 추출을 완료했습니다.")
                 else:
-                    st.warning("생성된 스케줄 이미지가 없습니다. 입력 데이터를 확인해주세요.")
+                    st.warning("추출된 일정이 없습니다. 입력 데이터를 확인해주세요.")
             except Exception as exc:
-                st.session_state.schedule_images = []
+                st.session_state.schedule_events = []
                 st.error(f"스케줄 추출 중 오류가 발생했습니다: {exc}")
 
-    images = st.session_state.get("schedule_images", [])
-    if images:
+    events = st.session_state.get("schedule_events", [])
+    if events:
         st.markdown("##### 인수인계 업무 달력")
-        displayed = False
-        for img_path in images:
-            path = Path(img_path)
-            if path.exists():
-                st.image(str(path), use_container_width=True)
-                displayed = True
-        if not displayed:
-            st.info("표시할 스케줄 이미지를 찾지 못했습니다. 다시 생성해 주세요.")
+        calendar(
+            events=events,
+            options={
+                "initialView": "dayGridMonth",
+                "height": "auto",
+                "locale": "en",
+                "buttonText": {
+                    "today": "오늘",
+                    "month": "월",
+                    "week": "주",
+                    "list": "목록",
+                },
+                "headerToolbar": {
+                    "left": "prev,next today",
+                    "center": "title",
+                    "right": "dayGridMonth,timeGridWeek,listWeek",
+                },
+                "displayEventTime": False,
+            },
+            key="handover_calendar",
+        )
     else:
-        if not SCHED_VIZ_DIR.exists():
-            st.info("스케줄 시각화 폴더를 찾을 수 없습니다. 버튼을 눌러 새로 생성하세요.")
-        else:
-            st.info("생성된 스케줄 이미지가 없습니다. 버튼을 눌러 스케줄을 추출하세요.")
+        st.info("생성된 일정이 없습니다. 버튼을 눌러 스케줄을 추출하세요.")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    # st.markdown('</div>', unsafe_allow_html=True)
 
 # ================== Router ==================
 if st.session_state.nav == "메인":

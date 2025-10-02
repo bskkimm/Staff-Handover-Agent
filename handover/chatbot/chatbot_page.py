@@ -11,6 +11,7 @@ def _render_msg(role: str, content: str):
     safe = html.escape(content).replace("\n", "<br>")
     row_cls = "user" if role == "user" else "assistant"
     bub_cls = "user" if role == "user" else "assistant"
+    # HTML 마크업으로 채팅 말풍선 형태를 구성한다.
     st.markdown(
         f'<div class="msg-row {row_cls}"><div class="bubble {bub_cls}">{safe}</div></div>',
         unsafe_allow_html=True
@@ -27,6 +28,7 @@ def run_chat():
     st.markdown("#### 업무 Q&A 챗봇")
     st.caption("업로드된 인수인계 자료를 근거로 바통이가 답변합니다.")
 
+    # 채팅 영역 레이아웃과 말풍선 색감을 맞추기 위해 CSS를 직접 삽입한다.
     st.markdown("""
     <style>
     .qa-container { max-width: 900px; margin:auto; }
@@ -71,6 +73,7 @@ def run_chat():
         st.session_state.qa_history = []
 
     # ----- UI container -----
+    # 대화 히스토리를 중앙 정렬된 컨테이너에 감싸서 가독성을 높인다.
     st.markdown('<div class="qa-container">', unsafe_allow_html=True)
 
     # Render past messages

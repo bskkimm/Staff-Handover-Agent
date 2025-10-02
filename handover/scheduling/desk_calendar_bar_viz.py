@@ -28,6 +28,7 @@ Z_DATE = 7
 Z_LABELS = 8
 
 def _set_korean_font():
+    # 한글이 깨지지 않도록 우선순위 폰트를 순차적으로 찾는다.
     candidates = [
         "Malgun Gothic", "Apple SD Gothic Neo", "NanumGothic", "Noto Sans CJK KR",
     ]
@@ -44,6 +45,7 @@ def _set_korean_font():
     return None
 
 def _parse_blocks(md_text: str):
+    # 일정 마크다운을 읽어 프로젝트별 메타데이터 블록으로 변환한다.
     lines = [ln.strip() for ln in md_text.splitlines()]
     items = []
     i = 0
@@ -92,6 +94,7 @@ def _month_date_range(year:int, month:int):
     return first, last
 
 def _week_date_grid(year:int, month:int, firstweekday=6):
+    # 대상 월을 주/요일 격자로 펼친다.
     cal = calendar.Calendar(firstweekday=firstweekday)
     raw = cal.monthdayscalendar(year, month)  # 0 for overflow
     weeks = []
@@ -113,6 +116,7 @@ def _clip_span_to_month(st: date, ed: date, month_first: date, month_last: date)
     return a, b
 
 def _segments_for_week(week_dates, st: date, ed: date):
+    # 해당 주 안에서 이벤트가 차지하는 열 구간을 구한다.
     indices = [i for i,d in enumerate(week_dates) if d is not None]
     if not indices:
         return None
@@ -133,6 +137,7 @@ def _segments_for_week(week_dates, st: date, ed: date):
     return c0, c1
 
 def _allocate_lane(lanes, c0, c1):
+    # 기존 구간과 겹치지 않는 첫 번째 레인에 배치한다.
     for li, occ in enumerate(lanes):
         overlap = any(not (c1 < oc0 or c0 > oc1) for (oc0, oc1) in occ)
         if not overlap:
@@ -142,6 +147,7 @@ def _allocate_lane(lanes, c0, c1):
     return len(lanes)-1
 
 def _build_color_map(project_names):
+    # 프로젝트별 색상을 항상 동일하게 산출한다.
     from matplotlib import cm
     cmap = cm.get_cmap("tab20", 20)
     colors = {}
@@ -161,6 +167,7 @@ def render_month_bars(md_text: str, year: int, month: int, out_png: str, max_lan
         today = date(2024, 7, 24)  # prototype default
     _set_korean_font()
 
+    # 마크다운 블록을 그리드에 그릴 수 있는 기간 데이터로 정규화한다.
     items = _parse_blocks(md_text)
     spans = []
     projects = set()

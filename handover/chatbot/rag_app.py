@@ -124,6 +124,7 @@ def _render_msg(role: str, content: str):
     safe = html.escape(content).replace("\n", "<br>")
     row_cls = "user" if role == "user" else "assistant"
     bub_cls = "user" if role == "user" else "assistant"
+    # Streamlit에 삽입할 채팅 말풍선 HTML을 생성한다.
     st.markdown(
         f'<div class="msg-row {row_cls}"><div class="bubble {bub_cls}">{safe}</div></div>',
         unsafe_allow_html=True
