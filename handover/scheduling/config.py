@@ -19,7 +19,8 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 # 스케줄 산출물들이 공통으로 사용하는 기준 경로.
 SCHED_DIR = BASE_DIR
-OUT_DIR = SCHED_DIR / "output"
+# Staff-Handover-Agent/data/schedule 디렉토리 사용
+OUT_DIR = PROJECT_ROOT / "data" / "schedule"
 VIZ_DIR = OUT_DIR / "out_cal_bars"
 INPUT_FILE = PROJECT_ROOT / "data" / "preprocessed_data" / "No_1.txt"
 OUT_MD = OUT_DIR / "combined_schedule.md"
