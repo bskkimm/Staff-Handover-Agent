@@ -124,12 +124,19 @@ def test_llm_markdown_output():
 
 def save_markdown_to_file(markdown_content, filename="test_report.md"):
     """
-    생성된 마크다운을 파일로 저장
+    생성된 마크다운을 Staff-Handover-Agent/data/summary_report 디렉토리에 파일로 저장
     """
     try:
-        with open(filename, 'w', encoding='utf-8') as f:
+        # Staff-Handover-Agent/data/summary_report 디렉토리 사용
+        script_dir = Path(__file__).resolve().parent
+        staff_handover_agent_dir = script_dir.parent.parent
+        data_dir = staff_handover_agent_dir / "data" / "summary_report"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        
+        file_path = data_dir / filename
+        with open(str(file_path), 'w', encoding='utf-8') as f:
             f.write(markdown_content)
-        print(f"인수인계 요약 레포트 저장 완료: {filename}")
+        print(f"인수인계 요약 레포트 저장 완료: {file_path}")
     except Exception as e:
         print(f"파일 저장 오류: {e}")
 

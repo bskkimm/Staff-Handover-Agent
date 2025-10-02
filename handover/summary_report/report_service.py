@@ -6,7 +6,11 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
 def _summary_dir() -> Path:
-    return Path(__file__).resolve().parent
+    # Staff-Handover-Agent/data/summary_report 디렉토리 사용
+    staff_handover_agent_dir = Path(__file__).resolve().parent.parent.parent
+    data_dir = staff_handover_agent_dir / "data" / "summary_report"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return data_dir
 
 
 def report_path(filename: str = "test_report.md") -> Path:
