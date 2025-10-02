@@ -34,32 +34,17 @@ def run_data_preprocessing():
     try:
         from data_preprocess import process_with_auto_filename
         
-        # 진행 상태 표시
-        with st.spinner("📊 파일을 분석하고 구조화된 데이터로 변환 중..."):
-            # 전처리 실행
-            result = process_with_auto_filename()
-            
-            if result['success']:
-                st.success(f"✅ 전처리 완료! {result['processed_files']}개 파일이 처리되었습니다.")
-                st.info(f"📁 출력 파일: {result['output_file']}")
-                
-                # 처리된 파일 목록 표시
-                if result.get('files_processed'):
-                    st.markdown("**처리된 파일들:**")
-                    for file_name in result['files_processed']:
-                        st.markdown(f"- {file_name}")
-                
-                return True
-            else:
-                st.error(f"❌ 전처리 실패: {result['message']}")
-                return False
+        # 전처리 실행 (사용자에게 보이지 않음)
+        result = process_with_auto_filename()
+        
+        if result['success']:
+            return True
+        else:
+            return False
                 
     except ImportError as e:
-        st.error(f"❌ 전처리 모듈을 불러올 수 없습니다: {e}")
-        st.info("data_preprocess 패키지가 올바르게 설치되어 있는지 확인해주세요.")
         return False
     except Exception as e:
-        st.error(f"❌ 전처리 중 오류가 발생했습니다: {e}")
         return False
 
 def run_upload():
@@ -92,11 +77,11 @@ def run_upload():
     with col2:
         if st.button("전체 삭제", use_container_width=True):
             handle_delete_all()
-    
     # 업로드 처리 및 메시지 표시 (컬럼 밖에서)
     if upload_clicked:
         if files:
-            handle_upload(files)
+            with st.spinner("파일 업로드 중..."):
+                handle_upload(files)
         else:
             st.warning("추가할 파일을 먼저 선택해 주세요.")
 
@@ -130,20 +115,25 @@ def handle_upload(files):
         except Exception as e:
             errors.append(f"{file.name}: {str(e)}")
     
-    # 결과 메시지 표시
+    # 파일이 추가되었으면 자동 전처리 실행
     if added > 0:
-        st.success(f"{added}개 파일을 성공적으로 업로드했어요.")
-    if duplicates > 0:
+        # 자동 전처리 실행
+        preprocessing_success = run_data_preprocessing()
+        
+        if preprocessing_success:
+            # 전처리 성공 시 조용히 처리 (사용자에게 메시지 표시하지 않음)
+            pass
+        else:
+            st.error("파일 업로드는 완료되었지만 전처리 중 오류가 발생했습니다.")
+        
+        # 파일 업로드 후 페이지 새로고침하여 메뉴 상태 업데이트
+        st.rerun()
+    elif duplicates > 0:
         st.info(f"{duplicates}개 파일은 이미 업로드되어 있어서 건너뛰었어요.")
+    
     if errors:
         for error in errors:
             st.error(error)
-    
-    # 파일이 추가되었으면 자동 전처리 실행 및 페이지 새로고침
-    if added > 0:
-        # 자동 전처리 실행
-        run_data_preprocessing()
-        st.rerun()
 
 def handle_delete_all():
     """전체 파일 삭제 처리"""
@@ -238,27 +228,10 @@ def render_file_list():
                     except Exception as e:
                         st.error(f"파일 삭제 중 오류가 발생했습니다: {str(e)}")
         
-        # 전처리 상태 확인 및 실행 버튼
+        # 파일이 업로드되어 있으면 기능 활성화 안내
         st.divider()
-        st.markdown("##### 📊 데이터 전처리")
-        
-        # 전처리 상태 확인
-        is_preprocessed = check_preprocessing_status()
-        
-        if is_preprocessed:
-            st.success("✅ 전처리가 완료되었습니다. 인수인계 자료를 확인할 수 있습니다.")
-        else:
-            st.info("📝 업로드된 파일을 전처리하여 구조화된 데이터로 변환하세요.")
-            
-            if st.button("🔄 전처리 실행", use_container_width=True, type="secondary"):
-                # 전처리 실행
-                preprocessing_success = run_data_preprocessing()
-                
-                if preprocessing_success:
-                    st.rerun()  # 페이지 새로고침하여 상태 업데이트
-        
-        # 다른 기능 활성화 안내
         st.info("왼쪽 메뉴의 기능들이 활성화되었습니다. 원하는 기능으로 이동하세요. ✅")
         
     except Exception as e:
-        st.error(f"파일 목록을 불러오는 중 오류가 발생했습니다: {str(e)}")
+        # 오류 발생 시에도 기본 안내 메시지 표시
+        st.info("왼쪽 메뉴의 기능들이 활성화되었습니다. 원하는 기능으로 이동하세요. ✅")
