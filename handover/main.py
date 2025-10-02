@@ -178,7 +178,9 @@ def check_uploaded_files():
         from file_upload.database import file_db
         files = file_db.get_all_files()
         return len(files) > 0
-    except Exception:
+    except Exception as e:
+        # 디버깅을 위해 오류 로그 출력 (개발 환경에서만)
+        print(f"check_uploaded_files 오류: {e}")
         return False
 
 def get_uploaded_files_count():
