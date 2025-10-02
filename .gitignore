@@ -16,21 +16,9 @@ __pycache__/
 
 # IDE
 .vscode/settings.json
-<<<<<<< HEAD
-.idea/
 
-# 데이터베이스 파일
-data/file_metadata.db
-file_metadata.db
-=======
-.idea/data/file_metadata.db
-data/file_metadata.db
-data/file_metadata.db
->>>>>>> 38ffed9 (WIP: save local changes before rebase)
 data/file_metadata.db
 
 data/rag_store
 data/uploads
 data/preprocessed_data
-
-summary_report/test_report.md
