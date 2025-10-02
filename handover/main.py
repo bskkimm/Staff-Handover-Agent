@@ -15,7 +15,7 @@ if str(PROJECT_ROOT) not in sys.path:
 # 환경변수 로드
 load_dotenv(PROJECT_ROOT / ".env")
 
-SCHED_VIZ_DIR = (BASE_DIR / "scheduling" / "output" / "out_cal_bars").resolve()
+SCHED_VIZ_DIR = (PROJECT_ROOT / "data" / "schedule" / "out_cal_bars").resolve()
 SCHED_SCRIPT = (BASE_DIR / "scheduling" / "scheduling_main.py").resolve()
 
 
