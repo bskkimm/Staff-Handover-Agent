@@ -121,7 +121,7 @@ def render_transferor_login():
 
         if submitted:
             if not transferor_id or not receiver_id:
-                st.error("모든 필드를 입력해주세요")
+                st.error("사번을 입력해주세요")
             elif transferor_id == receiver_id:
                 st.error("인계자와 인수자는 다른 사번이어야 합니다")
             else:
@@ -134,6 +134,7 @@ def render_transferor_login():
                     st.session_state.user_role = "transferor"
                     st.session_state.employee_id = transferor_id
                     st.session_state.session_id = session.session_id
+                    st.session_state.transferor_id = transferor_id
                     st.session_state.receiver_id = receiver_id
                     st.session_state.nav = "파일 업로드"
 
@@ -149,7 +150,7 @@ def render_receiver_login():
     st.caption("사번을 입력하여 인계받은 자료를 확인하세요")
 
     with st.form("receiver_login_form"):
-        receiver_id = st.text_input("인수자 사번", placeholder="예: 2024002")
+        receiver_id = st.text_input("인수자 사번", placeholder="예: 11832")
 
         col1, col2 = st.columns([1, 1])
         with col1:
@@ -178,6 +179,7 @@ def render_receiver_login():
                     st.session_state.employee_id = receiver_id
                     st.session_state.session_id = session.session_id
                     st.session_state.transferor_id = session.transferor_id
+                    st.session_state.receiver_id = receiver_id
                     st.session_state.nav = "메인"
 
                     st.success(f"로그인 성공! 인계자: {session.transferor_id}")

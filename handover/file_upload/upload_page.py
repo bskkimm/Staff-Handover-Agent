@@ -244,7 +244,7 @@ def render_file_list(session_id: str = None):
         
         # 파일이 업로드되어 있으면 기능 활성화 안내
         st.divider()
-        st.info("왼쪽 메뉴의 기능들이 활성화되었습니다. 원하는 기능으로 이동하세요. ✅")
+        st.info("인수자를 위한 파일 업로드가 완료되었습니다. ✅")
         
     except Exception as e:
         # 오류 발생 시에도 기본 안내 메시지 표시
