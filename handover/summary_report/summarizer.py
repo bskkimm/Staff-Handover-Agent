@@ -13,14 +13,20 @@ client = AzureOpenAI(
     azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT')  
 )
 
-def test_llm_markdown_output():
+def test_llm_markdown_output(session_id: str = None):
     """
     OpenAI GPT-4 API로 마크다운 형식 보고서 생성 테스트
     """
-    
-    # 실제 파일에서 데이터 읽기 (스크립트 기준 상대 경로를 결합)
+
+    # 실제 파일에서 데이터 읽기
     script_dir = Path(__file__).resolve().parent
-    rel_to_script = Path("..") / ".." / "data" / "preprocessed_data" / "No_1.txt"
+
+    # 세션별 경로
+    if session_id:
+        rel_to_script = Path("..") / ".." / "data" / "sessions" / session_id / "preprocessed_data" / "No_1.txt"
+    else:
+        rel_to_script = Path("..") / ".." / "data" / "preprocessed_data" / "No_1.txt"
+
     file_path = script_dir / rel_to_script
     
     try:

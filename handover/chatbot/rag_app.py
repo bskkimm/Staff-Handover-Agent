@@ -612,19 +612,28 @@ def chat_with_context(client: AzureOpenAI, system_prompt: str, user_prompt: str)
 
 class RAGChatbot:
     """RAG 챗봇의 비즈니스 로직을 담당하는 클래스 (바통이 only)"""
-    
-    def __init__(self):
+
+    def __init__(self, session_id: str = None):
         self.client = None
         self.index = None
         self.meta = None
         self._initialized = False
-    
+        self.session_id = session_id
+
+        # 세션별 경로 설정
+        if session_id:
+            self.index_path = f"./data/sessions/{session_id}/rag_store/index.faiss"
+            self.meta_path = f"./data/sessions/{session_id}/rag_store/meta.jsonl"
+        else:
+            self.index_path = INDEX_PATH
+            self.meta_path = META_PATH
+
     def initialize(self) -> Tuple[bool, str]:
         try:
             if not os.getenv("AZURE_OPENAI_API_KEY"):
                 return False, "❌ AZURE_OPENAI_API_KEY가 설정되지 않았습니다. .env를 확인하세요."
             self.client = get_azure_client()
-            self.index, self.meta = load_rag_store(INDEX_PATH, META_PATH)
+            self.index, self.meta = load_rag_store(self.index_path, self.meta_path)
             self._initialized = True
             return True, "✅ 바통이가 준비되었습니다! 궁금한 점을 편하게 물어보세요."
         except FileNotFoundError as e:
