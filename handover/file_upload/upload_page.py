@@ -12,16 +12,21 @@ def human_size(bytes_size: int) -> str:
         bytes_size /= 1024.0
     return f"{bytes_size:.1f}PB"
 
-def check_preprocessing_status():
+def check_preprocessing_status(session_id: str = None):
     """전처리된 데이터가 있는지 확인"""
     try:
         import os
         from pathlib import Path
-        
+
         # Staff-Handover-Agent 실행 위치 기준으로 경로 설정
         current_dir = Path(__file__).parent.parent.parent  # handover/file_upload -> handover -> Staff-Handover-Agent
-        preprocessed_dir = current_dir / "data" / "preprocessed_data"
-        
+
+        # 세션별 전처리 디렉토리
+        if session_id:
+            preprocessed_dir = current_dir / "data" / "preprocessed_data" / session_id
+        else:
+            preprocessed_dir = current_dir / "data" / "preprocessed_data"
+
         if preprocessed_dir.exists():
             json_files = list(preprocessed_dir.glob("*.txt"))
             return len(json_files) > 0
@@ -29,25 +34,25 @@ def check_preprocessing_status():
     except Exception:
         return False
 
-def run_data_preprocessing():
+def run_data_preprocessing(session_id: str = None):
     """업로드된 파일들을 전처리하여 구조화된 데이터로 변환"""
     try:
         from data_preprocess import process_with_auto_filename
-        
-        # 전처리 실행 (사용자에게 보이지 않음)
-        result = process_with_auto_filename()
-        
+
+        # 전처리 실행 (세션 ID 전달)
+        result = process_with_auto_filename(session_id)
+
         if result['success']:
             return True
         else:
             return False
-                
+
     except ImportError as e:
         return False
     except Exception as e:
         return False
 
-def run_upload():
+def run_upload(session_id: str = None):
     # 페이지 제목 추가
     st.markdown('<style>h4 { margin-top: -45px !important; font-weight: 600 !important; }</style>', unsafe_allow_html=True)
     # 업로드 화면의 타이틀과 설명을 노출해 사용자 흐름을 잡는다.
@@ -86,27 +91,32 @@ def run_upload():
             st.warning("추가할 파일을 먼저 선택해 주세요.")
 
     st.divider()
-    render_file_list()
+    render_file_list(session_id)
     st.markdown('</div>', unsafe_allow_html=True)
 
 def handle_upload(files):
     """파일 업로드 처리"""
+    import streamlit as st
+
+    # 세션 ID 가져오기
+    session_id = st.session_state.get("session_id")
+
     added = 0
     duplicates = 0
     errors = []
-    
+
     for file in files:
         try:
             file_buffer = file.getvalue()
-            
+
             # 파일 크기 검증 (10MB 제한)
             if len(file_buffer) > 10 * 1024 * 1024:
                 errors.append(f"{file.name}: 파일 크기가 10MB를 초과합니다")
                 continue
-            
-            # 파일 저장 시도
-            result = file_db.save_file(file_buffer, file.name)
-            
+
+            # 파일 저장 시도 (session_id 포함)
+            result = file_db.save_file(file_buffer, file.name, session_id)
+
             if result:
                 added += 1
             else:
@@ -117,9 +127,9 @@ def handle_upload(files):
     
     # 파일이 추가되었으면 자동 전처리 실행
     if added > 0:
-        # 자동 전처리 실행
-        preprocessing_success = run_data_preprocessing()
-        
+        # 자동 전처리 실행 (세션 ID 전달)
+        preprocessing_success = run_data_preprocessing(session_id)
+
         if preprocessing_success:
             # 전처리 성공 시 조용히 처리 (사용자에게 메시지 표시하지 않음)
             pass
@@ -192,12 +202,16 @@ def handle_delete_all():
     except Exception as e:
         st.error(f"파일 삭제 중 오류가 발생했습니다: {str(e)}")
 
-def render_file_list():
+def render_file_list(session_id: str = None):
     """파일 목록 렌더링"""
     st.markdown("##### 업로드 목록")
-    
+
+    # 세션 ID가 파라미터로 전달되지 않으면 session_state에서 가져오기
+    if not session_id:
+        session_id = st.session_state.get("session_id")
+
     try:
-        files = file_db.get_all_files()
+        files = file_db.get_all_files(session_id)
         
         if not files:
             st.markdown('<p class="hint">아직 업로드된 파일이 없습니다.</p>', unsafe_allow_html=True)

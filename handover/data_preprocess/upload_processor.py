@@ -10,22 +10,28 @@ from typing import Dict, Optional
 from .main_processor import process_and_export_json
 
 
-def process_uploaded_files(output_filename: str = "No_1.txt") -> Dict:
+def process_uploaded_files(output_filename: str = "No_1.txt", session_id: str = None) -> Dict:
     """
     업로드된 파일들을 처리하여 JSON으로 저장
-    
+
     Args:
         output_filename: 출력 파일명 (기본값: "No_1.txt")
-    
+        session_id: 세션 ID (세션별 디렉토리 격리용)
+
     Returns:
         Dict: 처리 결과
     """
     # Staff-Handover-Agent 실행 위치 기준으로 경로 설정
-    # __file__: Staff-Handover-Agent/handover/data_preprocess/upload_processor.py
-    # 실행 위치: Staff-Handover-Agent
     current_dir = Path(__file__).parent.parent.parent  # handover/data_preprocess -> handover -> Staff-Handover-Agent
-    uploads_dir = current_dir / "data" / "uploads"
-    output_dir = current_dir / "data" / "preprocessed_data"
+
+    # 세션별 디렉토리 구조
+    if session_id:
+        uploads_dir = current_dir / "data" / "sessions" / session_id / "uploads"
+        output_dir = current_dir / "data" / "sessions" / session_id / "preprocessed_data"
+    else:
+        # 레거시 경로 (하위 호환성)
+        uploads_dir = current_dir / "data" / "uploads"
+        output_dir = current_dir / "data" / "preprocessed_data"
     
     # 디렉토리 생성 (존재하지 않는 경우)
     uploads_dir.mkdir(parents=True, exist_ok=True)
@@ -87,11 +93,16 @@ def process_uploaded_files(output_filename: str = "No_1.txt") -> Dict:
         }
 
 
-def get_next_file_number() -> int:
+def get_next_file_number(session_id: str = None) -> int:
     """다음 파일 번호를 가져옵니다 (No_1.txt, No_2.txt, ...)"""
     # Staff-Handover-Agent 실행 위치 기준으로 경로 설정
-    current_dir = Path(__file__).parent.parent.parent  # handover/data_preprocess -> handover -> Staff-Handover-Agent
-    output_dir = current_dir / "data" / "preprocessed_data"
+    current_dir = Path(__file__).parent.parent.parent
+
+    # 세션별 디렉토리
+    if session_id:
+        output_dir = current_dir / "data" / "sessions" / session_id / "preprocessed_data"
+    else:
+        output_dir = current_dir / "data" / "preprocessed_data"
     
     existing_files = list(output_dir.glob("No_*.txt"))
     if not existing_files:
@@ -110,11 +121,11 @@ def get_next_file_number() -> int:
     return max(numbers) + 1 if numbers else 1
 
 
-def process_with_auto_filename() -> Dict:
+def process_with_auto_filename(session_id: str = None) -> Dict:
     """자동으로 파일 번호를 생성하여 처리"""
-    file_number = get_next_file_number()
+    file_number = get_next_file_number(session_id)
     output_filename = f"No_{file_number}.txt"
-    return process_uploaded_files(output_filename)
+    return process_uploaded_files(output_filename, session_id)
 
 
 if __name__ == "__main__":

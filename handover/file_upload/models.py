@@ -10,7 +10,7 @@ Base = declarative_base()
 
 class UploadedFile(Base):
     __tablename__ = 'uploaded_files'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     filename = Column(String(255), nullable=False)          # 저장된 파일명 (안전한 이름)
     original_name = Column(String(255), nullable=False)     # 원본 파일명
@@ -19,6 +19,7 @@ class UploadedFile(Base):
     file_hash = Column(String(32), nullable=False, unique=True)  # MD5 해시 (중복 체크용)
     upload_time = Column(DateTime, default=datetime.now)    # 업로드 시간
     file_path = Column(Text, nullable=False)                # 파일 저장 경로 (절대 경로)
+    session_id = Column(String(36), nullable=True)          # 인계/인수 세션 ID (UUID)
     
     def __repr__(self):
         return f"<UploadedFile(id={self.id}, original_name='{self.original_name}')>"

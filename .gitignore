@@ -22,4 +22,19 @@ data/rag_store
 data/uploads
 data/preprocessed_data
 data/schedule
-data/summary_report
+data/summary_reportnul
+
+
+# 환경 / 민감정보
+*.env
+
+# 데이터/런타임 산출물
+data/sessions/
+data/*.db
+
+# 백업/임시
+*.log
+*.tmp
+
+# Windows 예약 이름
+nul

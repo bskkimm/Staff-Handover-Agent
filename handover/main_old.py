@@ -168,73 +168,40 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ================== Session ==================
-# 로그인 상태 초기화
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "user_role" not in st.session_state:
-    st.session_state.user_role = None
-if "session_id" not in st.session_state:
-    st.session_state.session_id = None
-if "transferor_id" not in st.session_state:
-    st.session_state.transferor_id = None
-if "receiver_id" not in st.session_state:
-    st.session_state.receiver_id = None
-
 if "nav" not in st.session_state:
     st.session_state.nav = "메인"
 
-# ================== Login Check ==================
-# 로그인하지 않은 경우 로그인 페이지 표시
-if not st.session_state.logged_in:
-    from auth.login_page import render_login_page
-    render_login_page()
-    st.stop()
-
 # ================== File Upload Status Check ==================
-def check_uploaded_files(session_id: str = None):
+def check_uploaded_files():
     """DB에서 업로드된 파일이 있는지 확인"""
     try:
         from file_upload.database import file_db
-        files = file_db.get_all_files(session_id=session_id)
+        files = file_db.get_all_files()
         return len(files) > 0
     except Exception as e:
         # 디버깅을 위해 오류 로그 출력 (개발 환경에서만)
         print(f"check_uploaded_files 오류: {e}")
         return False
 
-def get_uploaded_files_count(session_id: str = None):
+def get_uploaded_files_count():
     """업로드된 파일 개수 반환"""
     try:
         from file_upload.database import file_db
-        files = file_db.get_all_files(session_id=session_id)
+        files = file_db.get_all_files()
         return len(files)
     except Exception:
         return 0
 
 # ================== Sidebar (option_menu) ==================
-# 세션 ID 가져오기
-session_id = st.session_state.get("session_id")
-user_role = st.session_state.get("user_role")
+is_uploaded = check_uploaded_files()
 
-is_uploaded = check_uploaded_files(session_id)
-
-# 역할에 따라 메뉴 동적 구성
-if user_role == "transferor":
-    # 인계자: 파일 업로드만 가능
-    pages = ["파일 업로드"]
-    icons = ['cloud-upload']
-elif user_role == "receiver":
-    # 인수자: 파일이 업로드되었을 때만 다른 메뉴 활성화
-    if is_uploaded:
-        pages = ["메인", "인수인계 자료 추출", "Q&A", "스케줄 확인"]
-        icons = ['house', 'file-earmark-text', 'chat-dots', 'calendar3']
-    else:
-        pages = ["메인"]
-        icons = ['house']
+# 파일 업로드 상태에 따라 메뉴 동적 구성
+if is_uploaded:
+    pages = ["메인", "파일 업로드", "인수인계 자료 추출", "Q&A", "스케줄 확인"]
+    icons = ['house', 'cloud-upload', 'file-earmark-text', 'chat-dots', 'calendar3']
 else:
-    # 기본값 (로그인 안된 경우, 이론적으로는 도달하지 않음)
-    pages = ["메인"]
-    icons = ['house']
+    pages = ["메인", "파일 업로드"]
+    icons = ['house', 'cloud-upload']
 
 with st.sidebar:
     # 사이드바 헤더와 내비 구성을 원하는 스타일로 정렬한다.
@@ -266,48 +233,13 @@ with st.sidebar:
         st.session_state.nav = choice
         st.rerun()
 
-    st.divider()
-
-    # 사용자 정보 표시
-    transferor_id = st.session_state.get("transferor_id", "")
-    receiver_id = st.session_state.get("receiver_id", "")
-
-    st.markdown(
-        '<div style="color:#374151;font-size:13px;font-weight:600;margin:8px 0 4px 0;">세션 정보</div>',
-        unsafe_allow_html=True
-    )
-    st.markdown(
-        f'<div style="color:#6b7280;font-size:12px;margin:4px 0;">'
-        f'인계자: {transferor_id}<br>인수자: {receiver_id}'
-        '</div>', unsafe_allow_html=True
-    )
-
-    st.markdown(
-        f'<div style="color:#ef4444;font-size:12px;font-weight:600;text-align:center;margin:12px 8px 8px;">'
-        f'{"[인계자]" if user_role == "transferor" else "[인수자]"} 모드'
-        '</div>', unsafe_allow_html=True
-    )
-
-    # 인수자이면서 파일이 업로드되지 않았을 때 안내 메시지
-    if user_role == "receiver" and not is_uploaded:
+    # 파일이 업로드되지 않았을 때 안내 메시지 표시
+    if not is_uploaded:
         st.markdown(
-            '<div style="color:#6b7280;font-size:11px;text-align:center;margin:8px 8px 0;">'
-            '⚠ 인계자가 파일을 업로드하면<br>추가 메뉴를 사용할 수 있습니다.'
+            '<div style="color:#6b7280;font-size:12px;text-align:center;margin:16px 8px 0;">'
+            '⚠ 파일을 업로드하면 추가 메뉴를 사용할 수 있습니다.'
             '</div>', unsafe_allow_html=True
         )
-
-    st.divider()
-
-    # 로그아웃 버튼
-    if st.button("로그아웃", use_container_width=True, type="secondary"):
-        # 세션 상태 초기화
-        st.session_state.logged_in = False
-        st.session_state.user_role = None
-        st.session_state.session_id = None
-        st.session_state.transferor_id = None
-        st.session_state.receiver_id = None
-        st.session_state.nav = "메인"
-        st.rerun()
 
 # ================== Pages ==================
 def page_main():
@@ -347,8 +279,7 @@ def page_upload():
     """파일 업로드 페이지"""
     try:
         from file_upload.upload_page import run_upload
-        session_id = st.session_state.get("session_id")
-        run_upload(session_id=session_id)
+        run_upload()
     except Exception as e:
         st.error(f"파일 업로드 중 오류가 발생했습니다: {e}")
 
@@ -360,8 +291,7 @@ def page_report():
 
     if st.button("인수인계 자료 확인하기", use_container_width=True, type="primary"):
             with st.spinner("요약 레포트를 생성 중입니다..."):
-                session_id = st.session_state.get("session_id")
-                md, out_path = generate_and_save_report("test_report.md", session_id=session_id)
+                md, out_path = generate_and_save_report("test_report.md")
                 if md:
                     st.markdown(md)
                 else:

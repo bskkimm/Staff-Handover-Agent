@@ -18,15 +18,18 @@ def _render_msg(role: str, content: str):
     )
 
 @st.cache_resource
-def get_chatbot():
+def get_chatbot(session_id: str = None):
     """RAG 챗봇 인스턴스 생성 (캐시됨)"""
-    return RAGChatbot()
+    return RAGChatbot(session_id=session_id)
 
 def run_chat():
     # ----- Page title + styles -----
     st.markdown('<style>h4 { margin-top: -45px !important; font-weight: 600 !important; }</style>', unsafe_allow_html=True)
     st.markdown("#### 업무 Q&A 챗봇")
     st.caption("업로드된 인수인계 자료를 근거로 바통이가 답변합니다.")
+
+    # 세션 ID 가져오기
+    session_id = st.session_state.get("session_id")
 
     # 채팅 영역 레이아웃과 말풍선 색감을 맞추기 위해 CSS를 직접 삽입한다.
     st.markdown("""
@@ -36,9 +39,9 @@ def run_chat():
     .msg-row.user { justify-content:flex-end; }
     .msg-row.assistant { justify-content:flex-start; }
     .bubble { padding:12px 16px; border-radius:16px; line-height:1.6;
-              box-shadow:0 1px 3px rgba(0,0,0,0.05); word-wrap:break-word; 
+              box-shadow:0 1px 3px rgba(0,0,0,0.05); word-wrap:break-word;
               white-space:pre-wrap; font-size:16px; }
-    .bubble.user { display:inline-block; max-width:70%; background:#dbeafe; 
+    .bubble.user { display:inline-block; max-width:70%; background:#dbeafe;
                    border:1px solid #bfdbfe; text-align:left; border-bottom-right-radius:6px; }
     .bubble.assistant { flex:1; background:#f9fafb; border:1px solid #e5e7eb; text-align:left; }
     </style>
@@ -46,7 +49,7 @@ def run_chat():
 
     # ----- Ensure index is ready (trigger build on page entry) -----
     with st.spinner("자료를 정리하고 인덱스를 준비하는 중..."):
-        ok, msg, rebuilt = ensure_index_ready()
+        ok, msg, rebuilt = ensure_index_ready(session_id)
     if not ok:
         st.error(msg)
         st.info("업로드된 파일을 확인하거나 .env 설정(Azure OpenAI 키/엔드포인트/버전 및 임베딩/채팅 배포명)을 점검해주세요.")
@@ -60,7 +63,7 @@ def run_chat():
             pass
 
     # ----- Get chatbot (cached) & initialize if needed -----
-    chatbot = get_chatbot()
+    chatbot = get_chatbot(session_id)
     if not chatbot.is_initialized():
         success, message = chatbot.initialize()
         if not success:
