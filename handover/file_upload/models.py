@@ -16,7 +16,7 @@ class UploadedFile(Base):
     original_name = Column(String(255), nullable=False)     # 원본 파일명
     file_type = Column(String(10), nullable=False)          # 파일 확장자 (pdf, txt, docx, csv)
     file_size = Column(Integer, nullable=False)             # 파일 크기 (바이트)
-    file_hash = Column(String(32), nullable=False, unique=True)  # MD5 해시 (중복 체크용)
+    file_hash = Column(String(32), nullable=False)  # MD5 해시 (중복 체크용)
     upload_time = Column(DateTime, default=datetime.now)    # 업로드 시간
     file_path = Column(Text, nullable=False)                # 파일 저장 경로 (절대 경로)
     session_id = Column(String(36), nullable=True)          # 인계/인수 세션 ID (UUID)
