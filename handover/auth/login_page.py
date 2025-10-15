@@ -22,7 +22,7 @@ def render_login_page():
     }
     .login-title {
         text-align: center;
-        font-size: 60px;
+        font-size: 75px;
         font-weight: 700;
         color: #111827;
         margin-bottom: 12px;
@@ -66,9 +66,8 @@ def render_login_page():
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="login-container">', unsafe_allow_html=True)
     st.markdown('<div class="login-title">BATON</div>', unsafe_allow_html=True)
-    st.markdown('<div class="login-subtitle">업무 인수인계를 시작하세요</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-subtitle">BATON과 함께 AI로 업무 인수인계하기</div>', unsafe_allow_html=True)
 
     # 역할 선택이 안 되어 있으면 역할 선택 화면
     if "role_selection" not in st.session_state:
@@ -109,8 +108,8 @@ def render_transferor_login():
     st.caption("업무를 인계할 인수자를 지정하고 파일을 업로드하세요")
 
     with st.form("transferor_login_form"):
-        transferor_id = st.text_input("인계자 사번", placeholder="예: 2024001")
-        receiver_id = st.text_input("인수자 사번", placeholder="예: 2024002")
+        transferor_id = st.text_input("인계자 사번", placeholder="예: 11830")
+        receiver_id = st.text_input("인수자 사번", placeholder="예: 11832")
 
         col1, col2 = st.columns([1, 1])
         with col1:
