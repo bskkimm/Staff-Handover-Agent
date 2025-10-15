@@ -307,6 +307,8 @@ with st.sidebar:
         st.session_state.transferor_id = None
         st.session_state.receiver_id = None
         st.session_state.nav = "메인"
+        # 역할 선택 초기화 (로그인 홈 화면으로)
+        st.session_state.role_selection = None
         st.rerun()
 
 # ================== Pages ==================
