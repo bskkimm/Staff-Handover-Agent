@@ -33,32 +33,53 @@ def render_login_page():
     
     /* 왼쪽 섹션 스타일 */
     .left-content {
-        text-align: left;
+        text-align: center;
         padding-right: 55px;
         display: flex;
         flex-direction: column;
         justify-content: center;
+        align-items: center;
         min-height: 300px;
+        position: relative;
+        top: 15px;
     }
     .login-title {
-        font-size: 64px;
+        font-size: 96px;
         font-weight: 700;
         color: #ef4444;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
+        margin-top: 0;
         letter-spacing: -2px;
+        line-height: 1;
     }
     .login-subtitle {
         font-size: 16px;
         color: #6b7280;
+        margin-top: 0;
     }
     
     /* 오른쪽 섹션 스타일 */
     .right-content {
         padding-left: 85px;
     }
+    
+    /* 로그인 폼 래퍼 */
+    .login-form-wrapper {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 400px;
+        padding-top: 40px;
+    }
+    
+    /* 오른쪽 컬럼 전체를 위로 올리기 */
+    [data-testid="column"]:nth-child(2) {
+        margin-top: -80px;
+    }
     .section-title {
         text-align: center;
-        font-size: 20px;
+        font-size: 16px;
         font-weight: 600;
         color: #111827;
         margin-bottom: 30px;
@@ -175,12 +196,27 @@ def render_role_selection():
 
 def render_transferor_login():
     """인계자 로그인 화면"""
-    # 중앙 정렬을 위한 컨테이너
-    col1, col2, col3 = st.columns([1, 1.8, 1])
+    # 구분선 추가
+    st.markdown('<div class="divider-line"></div>', unsafe_allow_html=True)
     
-    with col2:
-        st.markdown('<div class="form-title">인계자 로그인</div>', unsafe_allow_html=True)
-        st.markdown('<div class="form-subtitle">업무를 인계할 인수자를 지정하고 파일을 업로드하세요</div>', unsafe_allow_html=True)
+    # 좌우 컬럼 생성
+    col_left, col_right = st.columns([1, 1], gap="large")
+    
+    with col_left:
+        st.markdown("""
+        <div class="left-content">
+            <div>
+                <div class="login-title">BATON</div>
+                <div class="login-subtitle">BATON과 함께 AI로 업무 인수인계하기</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col_right:
+        st.markdown('<div style="margin-top: -40px;">', unsafe_allow_html=True)
+        
+        st.markdown('<div class="form-title" style="text-align: center;">인계자 로그인</div>', unsafe_allow_html=True)
+        st.markdown('<div class="form-subtitle" style="text-align: center;">업무를 인계할 인수자를 지정하고 파일을 업로드하세요</div>', unsafe_allow_html=True)
 
         with st.form("transferor_login_form"):
             transferor_id = st.text_input("인계자 사번", placeholder="예: 11830")
@@ -214,22 +250,37 @@ def render_transferor_login():
                         st.session_state.receiver_id = receiver_id
                         st.session_state.nav = "파일 업로드"
 
-                        st.success(f"인계 세션이 생성되었습니다! 인수자: {receiver_id}")
+                        st.success(f"인계 세션이 생성되었습니다!\n\n인수자: {receiver_id}")
                         st.rerun()
                     except Exception as e:
                         st.error(f"로그인 실패: {e}")
-
+        
         st.markdown('</div>', unsafe_allow_html=True)
 
 
 def render_receiver_login():
     """인수자 로그인 화면"""
-    # 중앙 정렬을 위한 컨테이너
-    col1, col2, col3 = st.columns([1, 1.8, 1])
+    # 구분선 추가
+    st.markdown('<div class="divider-line"></div>', unsafe_allow_html=True)
     
-    with col2:
-        st.markdown('<div class="form-title">인수자 로그인</div>', unsafe_allow_html=True)
-        st.markdown('<div class="form-subtitle">사번을 입력하여 인계받은 자료를 확인하세요</div>', unsafe_allow_html=True)
+    # 좌우 컬럼 생성
+    col_left, col_right = st.columns([1, 1], gap="large")
+    
+    with col_left:
+        st.markdown("""
+        <div class="left-content">
+            <div>
+                <div class="login-title">BATON</div>
+                <div class="login-subtitle">BATON과 함께 AI로 업무 인수인계하기</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col_right:
+        st.markdown('<div style="margin-top: -40px;">', unsafe_allow_html=True)
+        
+        st.markdown('<div class="form-title" style="text-align: center;">인수자 로그인</div>', unsafe_allow_html=True)
+        st.markdown('<div class="form-subtitle" style="text-align: center;">사번을 입력하여 인계받은 자료를 확인하세요</div>', unsafe_allow_html=True)
 
         with st.form("receiver_login_form"):
             receiver_id = st.text_input("인수자 사번", placeholder="예: 2024002")
@@ -264,7 +315,7 @@ def render_receiver_login():
                         st.session_state.transferor_id = session.transferor_id
                         st.session_state.nav = "메인"
 
-                        st.success(f"로그인 성공! 인계자: {session.transferor_id}")
+                        st.success(f"로그인 성공!\n\n인계자: {session.transferor_id}")
                         st.rerun()
-
+        
         st.markdown('</div>', unsafe_allow_html=True)
