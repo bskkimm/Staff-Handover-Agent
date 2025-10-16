@@ -1,4 +1,3 @@
-# auth/login_page.py
 """
 인계자/인수자 로그인 페이지
 """
@@ -98,9 +97,9 @@ def render_login_page():
         transform: translateY(0px);
     }
     
-    /* 로그인 폼 컨테이너 */
+    /* 로그인 폼 컨테이너 - 너비 조정 */
     .login-form-container {
-        max-width: 450px;
+        max-width: 540px;
         margin: 0 auto;
         padding: 32px;
         background: #ffffff;
@@ -117,6 +116,11 @@ def render_login_page():
         font-size: 14px;
         color: #6b7280;
         margin-bottom: 24px;
+    }
+    
+    /* 입력 필드 너비 조정 */
+    .stTextInput > div > div > input {
+        font-size: 15px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -171,88 +175,96 @@ def render_role_selection():
 
 def render_transferor_login():
     """인계자 로그인 화면"""
-    st.markdown('<div class="form-title">인계자 로그인</div>', unsafe_allow_html=True)
-    st.markdown('<div class="form-subtitle">업무를 인계할 인수자를 지정하고 파일을 업로드하세요</div>', unsafe_allow_html=True)
+    # 중앙 정렬을 위한 컨테이너
+    col1, col2, col3 = st.columns([1, 1.8, 1])
+    
+    with col2:
+        st.markdown('<div class="form-title">인계자 로그인</div>', unsafe_allow_html=True)
+        st.markdown('<div class="form-subtitle">업무를 인계할 인수자를 지정하고 파일을 업로드하세요</div>', unsafe_allow_html=True)
 
-    with st.form("transferor_login_form"):
-        transferor_id = st.text_input("인계자 사번", placeholder="예: 11830")
-        receiver_id = st.text_input("인수자 사번", placeholder="예: 11832")
+        with st.form("transferor_login_form"):
+            transferor_id = st.text_input("인계자 사번", placeholder="예: 11830")
+            receiver_id = st.text_input("인수자 사번", placeholder="예: 11832")
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        col1, col2 = st.columns([1, 1], gap="small")
-        with col1:
-            submitted = st.form_submit_button("로그인", use_container_width=True, type="primary")
-        with col2:
-            back = st.form_submit_button("뒤로가기", use_container_width=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            col_a, col_b = st.columns([1, 1], gap="small")
+            with col_a:
+                submitted = st.form_submit_button("로그인", use_container_width=True, type="primary")
+            with col_b:
+                back = st.form_submit_button("뒤로가기", use_container_width=True)
 
-        if back:
-            st.session_state.role_selection = None
-            st.rerun()
+            if back:
+                st.session_state.role_selection = None
+                st.rerun()
 
-        if submitted:
-            if not transferor_id or not receiver_id:
-                st.error("모든 필드를 입력해주세요")
-            elif transferor_id == receiver_id:
-                st.error("인계자와 인수자는 다른 사번이어야 합니다")
-            else:
-                try:
-                    session = auth_db.create_session(transferor_id, receiver_id)
+            if submitted:
+                if not transferor_id or not receiver_id:
+                    st.error("모든 필드를 입력해주세요")
+                elif transferor_id == receiver_id:
+                    st.error("인계자와 인수자는 다른 사번이어야 합니다")
+                else:
+                    try:
+                        session = auth_db.create_session(transferor_id, receiver_id)
 
-                    st.session_state.logged_in = True
-                    st.session_state.user_role = "transferor"
-                    st.session_state.employee_id = transferor_id
-                    st.session_state.session_id = session.session_id
-                    st.session_state.receiver_id = receiver_id
-                    st.session_state.nav = "파일 업로드"
+                        st.session_state.logged_in = True
+                        st.session_state.user_role = "transferor"
+                        st.session_state.employee_id = transferor_id
+                        st.session_state.session_id = session.session_id
+                        st.session_state.receiver_id = receiver_id
+                        st.session_state.nav = "파일 업로드"
 
-                    st.success(f"인계 세션이 생성되었습니다! 인수자: {receiver_id}")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"로그인 실패: {e}")
+                        st.success(f"인계 세션이 생성되었습니다! 인수자: {receiver_id}")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"로그인 실패: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 def render_receiver_login():
     """인수자 로그인 화면"""
-    st.markdown('<div class="form-title">인수자 로그인</div>', unsafe_allow_html=True)
-    st.markdown('<div class="form-subtitle">사번을 입력하여 인계받은 자료를 확인하세요</div>', unsafe_allow_html=True)
+    # 중앙 정렬을 위한 컨테이너
+    col1, col2, col3 = st.columns([1, 1.8, 1])
+    
+    with col2:
+        st.markdown('<div class="form-title">인수자 로그인</div>', unsafe_allow_html=True)
+        st.markdown('<div class="form-subtitle">사번을 입력하여 인계받은 자료를 확인하세요</div>', unsafe_allow_html=True)
 
-    with st.form("receiver_login_form"):
-        receiver_id = st.text_input("인수자 사번", placeholder="예: 2024002")
+        with st.form("receiver_login_form"):
+            receiver_id = st.text_input("인수자 사번", placeholder="예: 2024002")
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        col1, col2 = st.columns([1, 1], gap="small")
-        with col1:
-            submitted = st.form_submit_button("로그인", use_container_width=True, type="primary")
-        with col2:
-            back = st.form_submit_button("뒤로가기", use_container_width=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            col_a, col_b = st.columns([1, 1], gap="small")
+            with col_a:
+                submitted = st.form_submit_button("로그인", use_container_width=True, type="primary")
+            with col_b:
+                back = st.form_submit_button("뒤로가기", use_container_width=True)
 
-        if back:
-            st.session_state.role_selection = None
-            st.rerun()
+            if back:
+                st.session_state.role_selection = None
+                st.rerun()
 
-        if submitted:
-            if not receiver_id:
-                st.error("사번을 입력해주세요")
-            else:
-                sessions = auth_db.get_sessions_by_receiver(receiver_id)
-
-                if not sessions:
-                    st.error("해당 사번으로 지정된 인계 세션이 없습니다")
+            if submitted:
+                if not receiver_id:
+                    st.error("사번을 입력해주세요")
                 else:
-                    session = sessions[0]
+                    sessions = auth_db.get_sessions_by_receiver(receiver_id)
 
-                    st.session_state.logged_in = True
-                    st.session_state.user_role = "receiver"
-                    st.session_state.employee_id = receiver_id
-                    st.session_state.session_id = session.session_id
-                    st.session_state.transferor_id = session.transferor_id
-                    st.session_state.nav = "메인"
+                    if not sessions:
+                        st.error("해당 사번으로 지정된 인계 세션이 없습니다")
+                    else:
+                        session = sessions[0]
 
-                    st.success(f"로그인 성공! 인계자: {session.transferor_id}")
-                    st.rerun()
+                        st.session_state.logged_in = True
+                        st.session_state.user_role = "receiver"
+                        st.session_state.employee_id = receiver_id
+                        st.session_state.session_id = session.session_id
+                        st.session_state.transferor_id = session.transferor_id
+                        st.session_state.nav = "메인"
 
-    st.markdown('</div>', unsafe_allow_html=True)
+                        st.success(f"로그인 성공! 인계자: {session.transferor_id}")
+                        st.rerun()
+
+        st.markdown('</div>', unsafe_allow_html=True)
