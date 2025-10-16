@@ -156,7 +156,8 @@ st.markdown("""
 
 /* 메인 랜딩 */
 .main-welcome { text-align:center; margin:10px auto 30px; max-width:600px; }
-.main-title { font-size:42px; font-weight:800; color:#111827; margin-bottom:16px; line-height:1.2; }
+.main-semititle { font-size:40px; font-weight:800; color:#111827; margin-bottom:16px; line-height:1.2; }
+.main-title { font-size:70px; font-weight:800; color:#111827; margin-bottom:16px; line-height:1.2; }
 .main-subtitle { font-size:18px; color:#6b7280; margin-bottom:40px; line-height:1.5; }
 .feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:24px; margin-top:20px; }
 .feature-card { text-align:center; padding:32px 20px; border:1px solid #e5e7eb; border-radius:16px; background:#ffffff; transition:.2s; }
@@ -226,7 +227,7 @@ if user_role == "transferor":
 elif user_role == "receiver":
     # 인수자: 파일이 업로드되었을 때만 다른 메뉴 활성화
     if is_uploaded:
-        pages = ["메인", "인수인계 자료 추출", "Q&A", "스케줄 확인"]
+        pages = ["메인", "인수인계 요약 레포트", "전임자 페르소나 챗봇", "프로젝트 캘린더"]
         icons = ['house', 'file-earmark-text', 'chat-dots', 'calendar3']
     else:
         pages = ["메인"]
@@ -272,21 +273,25 @@ with st.sidebar:
     transferor_id = st.session_state.get("transferor_id", "")
     receiver_id = st.session_state.get("receiver_id", "")
 
+
     st.markdown(
-        '<div style="color:#374151;font-size:13px;font-weight:600;margin:8px 0 4px 0;">세션 정보</div>',
+        f'<div style="color:#ef4444;font-size:14px;font-weight:600;text-align:center;margin:1px;">'
+        f'{"인계자" if user_role == "transferor" else "인수자"} 모드'
+        '</div>', unsafe_allow_html=True
+    )
+
+    st.markdown(
+        '<div style="color:#374151;font-size:13px;font-weight:600;margin:12px 0 4px 0;">접속자 정보</div>',
         unsafe_allow_html=True
     )
+
     st.markdown(
         f'<div style="color:#6b7280;font-size:12px;margin:4px 0;">'
         f'인계자: {transferor_id}<br>인수자: {receiver_id}'
         '</div>', unsafe_allow_html=True
     )
 
-    st.markdown(
-        f'<div style="color:#ef4444;font-size:12px;font-weight:600;text-align:center;margin:12px 8px 8px;">'
-        f'{"[인계자]" if user_role == "transferor" else "[인수자]"} 모드'
-        '</div>', unsafe_allow_html=True
-    )
+
 
     # 인수자이면서 파일이 업로드되지 않았을 때 안내 메시지
     if user_role == "receiver" and not is_uploaded:
@@ -316,34 +321,35 @@ def page_main():
     # 랜딩 히어로 영역과 기능 소개 카드를 HTML/CSS로 직접 그린다.
     st.markdown("""
     <div class="main-welcome">
-      <div class="main-title">BATON으로<br>완벽한 인수인계를 시작하세요</div>
-      <div class="main-subtitle">파일을 업로드하면 AI가 자동으로 인수인계 자료를 정리하고,<br>궁금한 점은 언제든 질문할 수 있습니다.</div>
+      <div class="main-title">BATON</div>
+      <div class="main-subtitle">인수인계, 이제부터 AI 인수인계 서비스 BATON과 함께</div>
     </div>
     """, unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,1,1])
-    with col2:
-        if st.button("파일 업로드하고 시작하기", use_container_width=True, type="primary"):
-            st.session_state.nav = "파일 업로드"
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 기능 카드 3개를 버튼으로 구현
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown('<div class="feature-icon" style="text-align:center;font-size:40px;margin-bottom:16px;">📝</div>', unsafe_allow_html=True)
+        if st.button("인수인계 요약 레포트", key="btn_report", use_container_width=True, type="secondary"):
+            st.session_state.nav = "인수인계 자료 추출"
             st.rerun()
-    st.markdown("""
-    <div class="feature-grid">
-      <div class="feature-card">
-        <div class="feature-icon">📝</div>
-        <div class="feature-title">자료 정리</div>
-        <div class="feature-desc">업로드한 파일들을 분석해서<br>체계적인 레포트로 정리</div>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">💬</div>
-        <div class="feature-title">AI Q&A</div>
-        <div class="feature-desc">인수인계 담당자 페르소나로<br>궁금한 점을 언제든 질문</div>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">📅</div>
-        <div class="feature-title">스케줄 시각화</div>
-        <div class="feature-desc">중요한 일정과 마일스톤을<br>한눈에 보기 쉽게 정리</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown('<div class="feature-icon" style="text-align:center;font-size:40px;margin-bottom:16px;">💬</div>', unsafe_allow_html=True)
+        if st.button("전임자 페르소나 챗봇", key="btn_qa", use_container_width=True, type="secondary"):
+            st.session_state.nav = "전임자 페르소나 챗봇"
+            st.rerun()
+
+
+    with col3:
+        st.markdown('<div class="feature-icon" style="text-align:center;font-size:40px;margin-bottom:16px;">📅</div>', unsafe_allow_html=True)
+        if st.button("프로젝트 캘린더", key="btn_schedule", use_container_width=True, type="secondary"):
+            st.session_state.nav = "프로젝트 캘린더"
+            st.rerun()
+
 
 def page_upload():
     """파일 업로드 페이지"""
@@ -355,7 +361,7 @@ def page_upload():
         st.error(f"파일 업로드 중 오류가 발생했습니다: {e}")
 
 def page_report():
-    st.markdown("#### 인수인계 자료 추출")
+    st.markdown("#### 인수인계 요약 레포트")
     st.caption("버튼을 누르면 현재 전처리된 데이터로 인수인계 요약 레포트를 생성하고 화면에 표시합니다.")
 
     from summary_report.report_service import generate_and_save_report
@@ -383,7 +389,7 @@ def page_qa():
 def page_calendar():
     # streamlit-calendar 컴포넌트를 사용해 인터랙티브 달력을 노출한다.
     # st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("#### 스케줄 확인")
+    st.markdown("#### 프로젝트 캘린더")
 
     if "schedule_events" not in st.session_state:
         st.session_state.schedule_events = []
@@ -436,9 +442,9 @@ if st.session_state.nav == "메인":
     page_main()
 elif st.session_state.nav == "파일 업로드":
     page_upload()
-elif st.session_state.nav == "인수인계 자료 추출":
+elif st.session_state.nav == "인수인계 요약 레포트":
     page_report()
-elif st.session_state.nav == "Q&A":
+elif st.session_state.nav == "전임자 페르소나 챗봇":
     page_qa()
-elif st.session_state.nav == "스케줄 확인":
+elif st.session_state.nav == "프로젝트 캘린더":
     page_calendar()

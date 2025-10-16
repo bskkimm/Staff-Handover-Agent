@@ -204,48 +204,47 @@ def handle_delete_all():
 
 def render_file_list(session_id: str = None):
     """파일 목록 렌더링"""
-    st.markdown("##### 업로드 목록")
-
     # 세션 ID가 파라미터로 전달되지 않으면 session_state에서 가져오기
     if not session_id:
         session_id = st.session_state.get("session_id")
 
     try:
         files = file_db.get_all_files(session_id)
-        
+
         if not files:
+            st.markdown("##### 업로드 목록")
             st.markdown('<p class="hint">아직 업로드된 파일이 없습니다.</p>', unsafe_allow_html=True)
             return
-        
-        # 파일 목록을 테이블 형태로 표시
-        for file_record in files:
-            col1, col2 = st.columns([9, 1])
-            
-            with col1:
-                # 파일 정보 표시
-                st.markdown(
-                    f"**{file_record.original_name}** "
-                    f"({file_record.file_type.upper()}) - "
-                    f"{human_size(file_record.file_size)} - "
-                    f"{file_record.upload_time.strftime('%Y-%m-%d %H:%M:%S')}"
-                )
-            
-            with col2:
-                # 개별 파일 삭제 버튼
-                if st.button(":material/delete:", key=f"delete_{file_record.id}", type="secondary", help="파일 삭제"):
-                    try:
-                        if file_db.delete_file(file_record.id):
-                            st.success(f"'{file_record.original_name}' 파일을 삭제했어요.")
-                            st.rerun()
-                        else:
-                            st.error("파일 삭제에 실패했습니다.")
-                    except Exception as e:
-                        st.error(f"파일 삭제 중 오류가 발생했습니다: {str(e)}")
-        
+
+        # 파일 개수 표시와 함께 expander로 감싸기
+        with st.expander(f"##### 업로드 목록 ({len(files)}개 파일)", expanded=False):
+            # 파일 목록을 테이블 형태로 표시
+            for file_record in files:
+                col1, col2 = st.columns([9, 1])
+
+                with col1:
+                    # 파일 정보 표시
+                    st.markdown(
+                        f"**{file_record.original_name}** "
+                        f"({file_record.file_type.upper()}) - "
+                        f"{human_size(file_record.file_size)} "
+                    )
+
+                with col2:
+                    # 개별 파일 삭제 버튼
+                    if st.button("삭제", key=f"delete_{file_record.id}", type="secondary", help="파일 삭제"):
+                        try:
+                            if file_db.delete_file(file_record.id):
+                                st.success(f"'{file_record.original_name}' 파일을 삭제했어요.")
+                                st.rerun()
+                            else:
+                                st.error("파일 삭제에 실패했습니다.")
+                        except Exception as e:
+                            st.error(f"파일 삭제 중 오류가 발생했습니다: {str(e)}")
+
         # 파일이 업로드되어 있으면 기능 활성화 안내
-        st.divider()
         st.info("인수자를 위한 파일 업로드가 완료되었습니다. ✅")
-        
+
     except Exception as e:
         # 오류 발생 시에도 기본 안내 메시지 표시
         st.info("왼쪽 메뉴의 기능들이 활성화되었습니다. 원하는 기능으로 이동하세요. ✅")
