@@ -247,6 +247,7 @@ def render_transferor_login():
                         st.session_state.user_role = "transferor"
                         st.session_state.employee_id = transferor_id
                         st.session_state.session_id = session.session_id
+                        st.session_state.transferor_id = transferor_id
                         st.session_state.receiver_id = receiver_id
                         st.session_state.nav = "파일 업로드"
 
@@ -312,6 +313,7 @@ def render_receiver_login():
                         st.session_state.employee_id = receiver_id
                         st.session_state.session_id = session.session_id
                         st.session_state.transferor_id = session.transferor_id
+                        st.session_state.receiver_id = receiver_id
                         st.session_state.nav = "메인"
 
                         st.success(f"로그인 성공!\n\n인계자: {session.transferor_id}")
