@@ -250,7 +250,6 @@ def render_transferor_login():
                         st.session_state.receiver_id = receiver_id
                         st.session_state.nav = "파일 업로드"
 
-                        st.success(f"인계 세션이 생성되었습니다!\n\n인수자: {receiver_id}")
                         st.rerun()
                     except Exception as e:
                         st.error(f"로그인 실패: {e}")
@@ -283,7 +282,7 @@ def render_receiver_login():
         st.markdown('<div class="form-subtitle" style="text-align: center;">사번을 입력하여 인계받은 자료를 확인하세요</div>', unsafe_allow_html=True)
 
         with st.form("receiver_login_form"):
-            receiver_id = st.text_input("인수자 사번", placeholder="예: 2024002")
+            receiver_id = st.text_input("인수자 사번", placeholder="예: 11832")
 
             st.markdown("<br>", unsafe_allow_html=True)
             
