@@ -26,7 +26,7 @@ def run_chat():
     # ----- Page title + styles -----
     st.markdown('<style>h4 { margin-top: -45px !important; font-weight: 600 !important; }</style>', unsafe_allow_html=True)
     st.markdown("#### 업무 Q&A 챗봇")
-    st.caption("업로드된 인수인계 자료를 근거로 바통이가 답변합니다.")
+    st.caption("인수받은 업무에 대해 궁금한 점을 물어보세요.")
 
     # 세션 ID 가져오기
     session_id = st.session_state.get("session_id")
@@ -48,7 +48,7 @@ def run_chat():
     """, unsafe_allow_html=True)
 
     # ----- Ensure index is ready (trigger build on page entry) -----
-    with st.spinner("자료를 정리하고 인덱스를 준비하는 중..."):
+    with st.spinner("자료를 정리하는 중..."):
         ok, msg, rebuilt = ensure_index_ready(session_id)
     if not ok:
         st.error(msg)
@@ -58,7 +58,7 @@ def run_chat():
     if rebuilt:
         try:
             st.cache_resource.clear()   # drop cached RAGChatbot so it reloads the fresh FAISS/meta
-            st.toast("인덱스가 최신 상태로 갱신되었습니다.", icon="✅")
+            st.toast("바통이가 답변할 준비를 마쳤습니다.", icon="✅")
         except Exception:
             pass
 
