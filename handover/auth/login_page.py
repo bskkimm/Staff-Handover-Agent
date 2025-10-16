@@ -1,4 +1,3 @@
-# auth/login_page.py
 """
 인계자/인수자 로그인 페이지
 """
@@ -12,35 +11,50 @@ def render_login_page():
     # 스타일 적용
     st.markdown("""
     <style>
-    /* Streamlit 기본 padding 제거 */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 1rem;
-    }
-    
     /* Streamlit 기본 요소 숨기기 */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    .block-container {
+        padding-top: 8rem;
+        padding-bottom: 1rem;
+    }
     
-    .main-container {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 0 20px;
+    /* 좌우 레이아웃용 구분선 */
+    .divider-line {
+        position: fixed;
+        left: 48%;
+        top: 30%;
+        bottom: 40%;
+        width: 2px;
+        background: #e5e7eb;
+        transform: translateX(-50%);
+    }
+    
+    /* 왼쪽 섹션 스타일 */
+    .left-content {
+        text-align: left;
+        padding-right: 55px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 300px;
     }
     .login-title {
-        text-align: center;
         font-size: 64px;
         font-weight: 700;
-        color: #111827;
-        margin-bottom: 8px;
+        color: #ef4444;
+        margin-bottom: 12px;
         letter-spacing: -2px;
     }
     .login-subtitle {
-        text-align: center;
-        font-size: 14px;
+        font-size: 16px;
         color: #6b7280;
-        margin-bottom: 25px;
+    }
+    
+    /* 오른쪽 섹션 스타일 */
+    .right-content {
+        padding-left: 85px;
     }
     .section-title {
         text-align: center;
@@ -48,12 +62,17 @@ def render_login_page():
         font-weight: 600;
         color: #111827;
         margin-bottom: 30px;
+        margin-top: 0;
     }
-    /* 버튼 컨테이너 */
-    .main-container > div {
-        max-width: 400px;
-        margin: 0 auto;
+    
+    /* 오른쪽 버튼 그룹 중앙 정렬 */
+    .right-button-group {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 300px;
     }
+    
     /* 버튼 스타일 */
     .stButton > button {
         width: 100%;
@@ -77,33 +96,36 @@ def render_login_page():
     .stButton > button:active {
         transform: translateY(0px);
     }
+    
+    /* 로그인 폼 컨테이너 - 너비 조정 */
     .login-form-container {
-        max-width: 400px;
+        max-width: 540px;
         margin: 0 auto;
-        padding: 28px;
+        padding: 32px;
         background: #ffffff;
         border-radius: 12px;
         box-shadow: 0 4px 16px rgba(0,0,0,0.08);
     }
     .form-title {
-        font-size: 20px;
+        font-size: 22px;
         font-weight: 700;
         color: #111827;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
     }
     .form-subtitle {
-        font-size: 13px;
+        font-size: 14px;
         color: #6b7280;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
+    }
+    
+    /* 입력 필드 너비 조정 */
+    .stTextInput > div > div > input {
+        font-size: 15px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    st.markdown('<div class="login-title">BATON</div>', unsafe_allow_html=True)
-    st.markdown('<div class="login-subtitle">BATON과 함께 AI로 업무 인수인계하기</div>', unsafe_allow_html=True)
-
-    # 역할 선택이 안 되어 있으면 역할 선택 화면
+    # 역할 선택 상태 확인
     if "role_selection" not in st.session_state:
         st.session_state.role_selection = None
 
@@ -114,121 +136,135 @@ def render_login_page():
     elif st.session_state.role_selection == "receiver":
         render_receiver_login()
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
 
 def render_role_selection():
-    """역할 선택 화면"""
-    st.markdown('<div class="section-title">역할을 선택해주세요</div>', unsafe_allow_html=True)
-
-    # 중앙 정렬을 위한 컬럼 사용
-    col1, col2, col3 = st.columns([1, 2, 1])
+    """역할 선택 화면 - 좌우 분할 레이아웃"""
     
-    with col2:
-        if st.button("인계자로 시작", key="btn_transferor", use_container_width=True):
+    # 구분선 추가
+    st.markdown('<div class="divider-line"></div>', unsafe_allow_html=True)
+    
+    # 좌우 컬럼 생성
+    col_left, col_right = st.columns([1, 1], gap="large")
+    
+    with col_left:
+        st.markdown("""
+        <div class="left-content">
+            <div>
+                <div class="login-title">BATON</div>
+                <div class="login-subtitle">BATON과 함께 AI로 업무 인수인계하기</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col_right:
+        # 수직 여백 추가로 중앙 배치 효과
+        st.markdown("<div style='height: 50px;'></div>", unsafe_allow_html=True)
+        
+        st.markdown('<div class="section-title">역할을 선택해주세요</div>', unsafe_allow_html=True)
+        
+        if st.button("인계자 로그인", key="btn_transferor", use_container_width=True):
             st.session_state.role_selection = "transferor"
             st.rerun()
         
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='margin: 16px 0;'></div>", unsafe_allow_html=True)
         
-        if st.button("인수자로 시작", key="btn_receiver", use_container_width=True):
+        if st.button("인수자 로그인", key="btn_receiver", use_container_width=True):
             st.session_state.role_selection = "receiver"
             st.rerun()
 
 
 def render_transferor_login():
     """인계자 로그인 화면"""
-    st.markdown('<div class="login-form-container">', unsafe_allow_html=True)
-    st.markdown('<div class="form-title">📤 인계자 로그인</div>', unsafe_allow_html=True)
-    st.markdown('<div class="form-subtitle">업무를 인계할 인수자를 지정하고 파일을 업로드하세요</div>', unsafe_allow_html=True)
+    # 중앙 정렬을 위한 컨테이너
+    col1, col2, col3 = st.columns([1, 1.8, 1])
+    
+    with col2:
+        st.markdown('<div class="form-title">인계자 로그인</div>', unsafe_allow_html=True)
+        st.markdown('<div class="form-subtitle">업무를 인계할 인수자를 지정하고 파일을 업로드하세요</div>', unsafe_allow_html=True)
 
-    with st.form("transferor_login_form"):
-        transferor_id = st.text_input("인계자 사번", placeholder="예: 11830")
-        receiver_id = st.text_input("인수자 사번", placeholder="예: 11832")
+        with st.form("transferor_login_form"):
+            transferor_id = st.text_input("인계자 사번", placeholder="예: 11830")
+            receiver_id = st.text_input("인수자 사번", placeholder="예: 11832")
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        col1, col2 = st.columns([1, 1], gap="small")
-        with col1:
-            submitted = st.form_submit_button("로그인", use_container_width=True, type="primary")
-        with col2:
-            back = st.form_submit_button("뒤로가기", use_container_width=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            col_a, col_b = st.columns([1, 1], gap="small")
+            with col_a:
+                submitted = st.form_submit_button("로그인", use_container_width=True, type="primary")
+            with col_b:
+                back = st.form_submit_button("뒤로가기", use_container_width=True)
 
-        if back:
-            st.session_state.role_selection = None
-            st.rerun()
+            if back:
+                st.session_state.role_selection = None
+                st.rerun()
 
-        if submitted:
-            if not transferor_id or not receiver_id:
-                st.error("사번을 입력해주세요")
-            elif transferor_id == receiver_id:
-                st.error("인계자와 인수자는 다른 사번이어야 합니다")
-            else:
-                # 세션 생성
-                try:
-                    session = auth_db.create_session(transferor_id, receiver_id)
+            if submitted:
+                if not transferor_id or not receiver_id:
+                    st.error("모든 필드를 입력해주세요")
+                elif transferor_id == receiver_id:
+                    st.error("인계자와 인수자는 다른 사번이어야 합니다")
+                else:
+                    try:
+                        session = auth_db.create_session(transferor_id, receiver_id)
 
-                    # 세션 상태 저장
-                    st.session_state.logged_in = True
-                    st.session_state.user_role = "transferor"
-                    st.session_state.employee_id = transferor_id
-                    st.session_state.session_id = session.session_id
-                    st.session_state.transferor_id = transferor_id
-                    st.session_state.receiver_id = receiver_id
-                    st.session_state.nav = "파일 업로드"
+                        st.session_state.logged_in = True
+                        st.session_state.user_role = "transferor"
+                        st.session_state.employee_id = transferor_id
+                        st.session_state.session_id = session.session_id
+                        st.session_state.receiver_id = receiver_id
+                        st.session_state.nav = "파일 업로드"
 
-                    st.success(f"인계 세션이 생성되었습니다! 인수자: {receiver_id}")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"로그인 실패: {e}")
+                        st.success(f"인계 세션이 생성되었습니다! 인수자: {receiver_id}")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"로그인 실패: {e}")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 def render_receiver_login():
     """인수자 로그인 화면"""
-    st.markdown('<div class="login-form-container">', unsafe_allow_html=True)
-    st.markdown('<div class="form-title">📥 인수자 로그인</div>', unsafe_allow_html=True)
-    st.markdown('<div class="form-subtitle">사번을 입력하여 인계받은 자료를 확인하세요</div>', unsafe_allow_html=True)
+    # 중앙 정렬을 위한 컨테이너
+    col1, col2, col3 = st.columns([1, 1.8, 1])
+    
+    with col2:
+        st.markdown('<div class="form-title">인수자 로그인</div>', unsafe_allow_html=True)
+        st.markdown('<div class="form-subtitle">사번을 입력하여 인계받은 자료를 확인하세요</div>', unsafe_allow_html=True)
 
-    with st.form("receiver_login_form"):
-        receiver_id = st.text_input("인수자 사번", placeholder="예: 11832")
+        with st.form("receiver_login_form"):
+            receiver_id = st.text_input("인수자 사번", placeholder="예: 2024002")
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        col1, col2 = st.columns([1, 1], gap="small")
-        with col1:
-            submitted = st.form_submit_button("로그인", use_container_width=True, type="primary")
-        with col2:
-            back = st.form_submit_button("뒤로가기", use_container_width=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            col_a, col_b = st.columns([1, 1], gap="small")
+            with col_a:
+                submitted = st.form_submit_button("로그인", use_container_width=True, type="primary")
+            with col_b:
+                back = st.form_submit_button("뒤로가기", use_container_width=True)
 
-        if back:
-            st.session_state.role_selection = None
-            st.rerun()
+            if back:
+                st.session_state.role_selection = None
+                st.rerun()
 
-        if submitted:
-            if not receiver_id:
-                st.error("사번을 입력해주세요")
-            else:
-                # 인수자로 지정된 세션 조회
-                sessions = auth_db.get_sessions_by_receiver(receiver_id)
-
-                if not sessions:
-                    st.error("해당 사번으로 지정된 인계 세션이 없습니다")
+            if submitted:
+                if not receiver_id:
+                    st.error("사번을 입력해주세요")
                 else:
-                    # 가장 최근 세션 선택 (향후 여러 세션 선택 UI 추가 가능)
-                    session = sessions[0]
+                    sessions = auth_db.get_sessions_by_receiver(receiver_id)
 
-                    # 세션 상태 저장
-                    st.session_state.logged_in = True
-                    st.session_state.user_role = "receiver"
-                    st.session_state.employee_id = receiver_id
-                    st.session_state.session_id = session.session_id
-                    st.session_state.transferor_id = session.transferor_id
-                    st.session_state.receiver_id = receiver_id
-                    st.session_state.nav = "메인"
+                    if not sessions:
+                        st.error("해당 사번으로 지정된 인계 세션이 없습니다")
+                    else:
+                        session = sessions[0]
 
-                    st.success(f"로그인 성공! 인계자: {session.transferor_id}")
-                    st.rerun()
+                        st.session_state.logged_in = True
+                        st.session_state.user_role = "receiver"
+                        st.session_state.employee_id = receiver_id
+                        st.session_state.session_id = session.session_id
+                        st.session_state.transferor_id = session.transferor_id
+                        st.session_state.nav = "메인"
 
-    st.markdown('</div>', unsafe_allow_html=True)
+                        st.success(f"로그인 성공! 인계자: {session.transferor_id}")
+                        st.rerun()
+
+        st.markdown('</div>', unsafe_allow_html=True)
