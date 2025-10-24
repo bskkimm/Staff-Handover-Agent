@@ -17,12 +17,38 @@ PROJECT_ROOT = BASE_DIR.parent.parent
 # 프로젝트 실행 동안 공유 환경변수를 한 번만 불러온다.
 load_dotenv(PROJECT_ROOT / ".env")
 
+# ✅ 가장 최근 세션 폴더 찾기
+def get_latest_session_dir() -> Path:
+    """가장 최근에 수정된 세션 폴더를 반환합니다."""
+    sessions_dir = PROJECT_ROOT / "data" / "sessions"
+    if not sessions_dir.exists():
+        raise RuntimeError(f"세션 디렉토리가 없습니다: {sessions_dir}")
+    
+    # 모든 세션 폴더를 찾아서 수정 시간 기준으로 정렬
+    session_folders = [d for d in sessions_dir.iterdir() if d.is_dir()]
+    if not session_folders:
+        raise RuntimeError(f"세션 폴더가 없습니다: {sessions_dir}")
+    
+    # 가장 최근 폴더 선택
+    latest_session = max(session_folders, key=lambda d: d.stat().st_mtime)
+    return latest_session
+
 # 스케줄 산출물들이 공통으로 사용하는 기준 경로.
 SCHED_DIR = BASE_DIR
+
+# ✅ 세션 기반 경로 사용
+try:
+    LATEST_SESSION = get_latest_session_dir()
+    INPUT_FILE = LATEST_SESSION / "preprocessed_data" / "No_1.txt"
+    print(f"[INFO] 사용할 세션: {LATEST_SESSION.name}")
+    print(f"[INFO] 입력 파일: {INPUT_FILE}")
+except Exception as e:
+    print(f"[WARN] 세션 폴더를 찾을 수 없습니다: {e}")
+    INPUT_FILE = PROJECT_ROOT / "data" / "preprocessed_data" / "No_1.txt"
+
 # Staff-Handover-Agent/data/schedule 디렉토리 사용
 OUT_DIR = PROJECT_ROOT / "data" / "schedule"
 VIZ_DIR = OUT_DIR / "out_cal_bars"
-INPUT_FILE = PROJECT_ROOT / "data" / "preprocessed_data" / "No_1.txt"
 OUT_MD = OUT_DIR / "combined_schedule.md"
 OUT_PNG = OUT_DIR / "combined_schedule_timeline.png"
 OUT_ICS = OUT_DIR / "combined_schedule.ics"

@@ -163,8 +163,10 @@ def _ideal_text_color(rgb):
     return "black" if y > 0.6 else "white"
 
 def render_month_bars(md_text: str, year: int, month: int, out_png: str, max_lanes_per_week=3, color_map=None, label_once_per_span=True, today: date=None):
+    # ✅ 수정: today가 None이면 현재 날짜 사용
     if today is None:
-        today = date(2024, 7, 24)  # prototype default
+        today = date.today()
+    
     _set_korean_font()
 
     # 마크다운 블록을 그리드에 그릴 수 있는 기간 데이터로 정규화한다.
@@ -321,8 +323,10 @@ def render_month_bars(md_text: str, year: int, month: int, out_png: str, max_lan
     return out_png
 
 def render_all_months_bars(md_path: str, out_dir: str, today: date=None):
+    # ✅ 수정: today가 None이면 현재 날짜 사용
     if today is None:
-        today = date(2024, 7, 23)  # prototype default
+        today = date.today()
+    
     md_text = Path(md_path).read_text(encoding="utf-8")
 
     lines = [ln.strip() for ln in md_text.splitlines()]
